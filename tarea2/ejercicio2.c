@@ -1,16 +1,47 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
 
+#define MAXBUFLEN 1000
 
 int main(int argc, char* argv[]) {
-    // Verificar si se han pasado argumentos
-    if (argc < 2) {
-        printf("No se han pasado argumentos.\n");
-    } else {
-        printf("Se han pasado %d argumento(s):\n", argc - 1); // Restamos 1 por el nombre del programa
-        for (int i = 1; i < argc; i++) {
-            printf("Argumento %d: %s\n", i, argv[1]);
-        }
+   
+   
+
+   
+    int fd = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC);
+    if (fd == -1) {
+        perror("No se pudo abrir el archivo de salida");
+        return 1;
     }
+
+ 
+    FILE *fp = fopen(argv[1], "r");
+    if (fp != NULL) {
+        char buffer[MAXBUFLEN];
+        size_t bytesRead;
+        
+ 
+        while ((bytesRead = fread(buffer, sizeof(char), MAXBUFLEN, fp)) > 0) {
+            // Escribir el contenido leído en el archivo de salida
+            ssize_t bytesWritten = write(fd, buffer, bytesRead);
+            if (bytesWritten == -1) {
+                perror("Error al escribir en el archivo");
+                close(fd);
+                fclose(fp);
+                return 1;
+            }
+        }
+
+        // Cerrar los archivos
+        fclose(fp);
+        close(fd);
+    } else {
+        perror("No se pudo abrir el archivo de entrada");
+        close(fd);
+        return 1;
+    }
+
     return 0;
 }
