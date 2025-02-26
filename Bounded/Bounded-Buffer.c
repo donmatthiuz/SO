@@ -1,81 +1,68 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include "buffer.h"
 
-#define BUFFER_SIZE 5
-#define MAX_ITEMS 5
+#define MAX_ITEMS 10  // Número total de elementos a producir/consumir
 
-int buffer[BUFFER_SIZE];
-int in = 0;
-int out = 0;
-int produced_count = 0;
-int consumed_count = 0;
-
+buffer_t buffer;
 pthread_mutex_t mutex;
-pthread_cond_t full;
-pthread_cond_t empty;
+pthread_cond_t full, empty;
 
 void* producer(void* arg) {
-   int item = 1;
+    for (int i = 0; i < MAX_ITEMS; i++) {
+        slot_t item = {i + 1}; // Crear elemento
 
-   while (produced_count < MAX_ITEMS) {
-      pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&mutex);
+        while (buffer.size == buffer.capacity) {  // Espera si el buffer está lleno
+            pthread_cond_wait(&empty, &mutex);
+        }
 
-      while (((in + 1) % BUFFER_SIZE) == out) {
-         pthread_cond_wait(&empty, &mutex);
-      }
+        buffer_insert(&buffer, &item);
+        printf("Produced: %d\n", item.value);
 
-      buffer[in] = item;
-      printf("Produced: %d\n", item);
-      item++;
-      in = (in + 1) % BUFFER_SIZE;
-
-      produced_count++;
-
-      pthread_cond_signal(&full);
-      pthread_mutex_unlock(&mutex);
-   }
-
-   pthread_exit(NULL);
+        pthread_cond_signal(&full); // Notifica que hay elementos para consumir
+        pthread_mutex_unlock(&mutex);
+    }
+    pthread_exit(NULL);
 }
 
 void* consumer(void* arg) {
-   while (consumed_count < MAX_ITEMS) {
-      pthread_mutex_lock(&mutex);
+    for (int i = 0; i < MAX_ITEMS; i++) {
+        slot_t item;
 
-      while (in == out) {
-         pthread_cond_wait(&full, &mutex);
-      }
+        pthread_mutex_lock(&mutex);
+        while (buffer.size == 0) {  // Espera si el buffer está vacío
+            pthread_cond_wait(&full, &mutex);
+        }
 
-      int item = buffer[out];
-      printf("Consumed: %d\n", item);
-      out = (out + 1) % BUFFER_SIZE;
+        buffer_remove(&buffer, &item);
+        printf("Consumed: %d\n", item.value);
 
-      consumed_count++;
-
-      pthread_cond_signal(&empty);
-      pthread_mutex_unlock(&mutex);
-   }
-
-   pthread_exit(NULL);
+        pthread_cond_signal(&empty); // Notifica que hay espacio disponible
+        pthread_mutex_unlock(&mutex);
+    }
+    pthread_exit(NULL);
 }
 
 int main() {
-   pthread_t producerThread, consumerThread;
+    pthread_t producerThread, consumerThread;
 
-   pthread_mutex_init(&mutex, NULL);
-   pthread_cond_init(&full, NULL);
-   pthread_cond_init(&empty, NULL);
+    buffer_init(&buffer, 5); // Crear buffer de tamaño 5
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&full, NULL);
+    pthread_cond_init(&empty, NULL);
 
-   pthread_create(&producerThread, NULL, producer, NULL);
-   pthread_create(&consumerThread, NULL, consumer, NULL);
+    pthread_create(&producerThread, NULL, producer, NULL);
+    pthread_create(&consumerThread, NULL, consumer, NULL);
 
-   pthread_join(producerThread, NULL);
-   pthread_join(consumerThread, NULL);
+    pthread_join(producerThread, NULL);
+    pthread_join(consumerThread, NULL);
 
-   pthread_mutex_destroy(&mutex);
-   pthread_cond_destroy(&full);
-   pthread_cond_destroy(&empty);
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&full);
+    pthread_cond_destroy(&empty);
+    buffer_destroy(&buffer);
 
-   return 0;
+    return 0;
 }
