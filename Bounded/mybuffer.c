@@ -44,9 +44,9 @@ void buffer_dump(buffer_t* buffer){
     int i,j;
     
     fprintf(stderr, "\n---- El buffer ---\n");
-    fprintf(stderr, "size: %d\n", buffer->size);
-    fprintf(stderr, "head: %d\n", buffer->head);
-    fprintf(stderr, "tail: %d\n", buffer->tail);
+    fprintf(stderr, "tamano: %d\n", buffer->size);
+    fprintf(stderr, "cabeza: %d\n", buffer->head);
+    fprintf(stderr, "cola: %d\n", buffer->tail);
     fprintf(stderr, "\n");
 
     j = buffer->tail;

@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include "buffer.h"
 
-#define MAX_ITEMS 10  // Número total de elementos a producir/consumir
+#define MAX_ITEMS 10  
 
 buffer_t buffer;
 pthread_mutex_t mutex;
@@ -11,18 +11,18 @@ pthread_cond_t full, empty;
 
 void* producer(void* arg) {
     for (int i = 0; i < MAX_ITEMS; i++) {
-        slot_t item = {i + 1}; // Crear elemento
+        slot_t item = {i + 1};
 
         pthread_mutex_lock(&mutex);
-        while (buffer.size == buffer.capacity) {  // Espera si el buffer está lleno
+        while (buffer.size == buffer.capacity) {
             pthread_cond_wait(&empty, &mutex);
         }
 
         buffer_insert(&buffer, &item);
-        printf("Produced: %d\n", item.value);
+        printf("Productor: %d\n", item.value);
         buffer_dump(&buffer);
 
-        pthread_cond_signal(&full); // Notifica que hay elementos para consumir
+        pthread_cond_signal(&full);
         pthread_mutex_unlock(&mutex);
     }
     pthread_exit(NULL);
@@ -33,15 +33,15 @@ void* consumer(void* arg) {
         slot_t item;
 
         pthread_mutex_lock(&mutex);
-        while (buffer.size == 0) {  // Espera si el buffer está vacío
+        while (buffer.size == 0) { 
             pthread_cond_wait(&full, &mutex);
         }
 
         buffer_remove(&buffer, &item);
-        printf("Consumed: %d\n", item.value);
+        printf("Consumidor: %d\n", item.value);
         buffer_dump(&buffer);
 
-        pthread_cond_signal(&empty); // Notifica que hay espacio disponible
+        pthread_cond_signal(&empty);
         pthread_mutex_unlock(&mutex);
     }
     pthread_exit(NULL);
@@ -50,7 +50,7 @@ void* consumer(void* arg) {
 int main() {
     pthread_t producerThread, consumerThread;
 
-    buffer_init(&buffer, 5); // Crear buffer de tamaño 5
+    buffer_init(&buffer, 5); 
     pthread_mutex_init(&mutex, NULL);
     pthread_cond_init(&full, NULL);
     pthread_cond_init(&empty, NULL);
