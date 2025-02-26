@@ -1,11 +1,10 @@
 #include "buffer.h"
 
 int buffer_init(buffer_t * buffer, int capacity){
-    // create dynamic array
+    
     buffer->array = malloc(capacity*sizeof(slot_t));
     
-    // TODO...check malloc
-    // ...
+    
 
     buffer->capacity = capacity;
     buffer->size = 0;
@@ -44,7 +43,7 @@ void buffer_destroy(buffer_t * buffer){
 void buffer_dump(buffer_t* buffer){
     int i,j;
     
-    fprintf(stderr, "\n---- bounded buffer ---\n");
+    fprintf(stderr, "\n---- El buffer ---\n");
     fprintf(stderr, "size: %d\n", buffer->size);
     fprintf(stderr, "head: %d\n", buffer->head);
     fprintf(stderr, "tail: %d\n", buffer->tail);

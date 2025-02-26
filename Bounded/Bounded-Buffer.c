@@ -20,6 +20,7 @@ void* producer(void* arg) {
 
         buffer_insert(&buffer, &item);
         printf("Produced: %d\n", item.value);
+        buffer_dump(&buffer);
 
         pthread_cond_signal(&full); // Notifica que hay elementos para consumir
         pthread_mutex_unlock(&mutex);
@@ -38,6 +39,7 @@ void* consumer(void* arg) {
 
         buffer_remove(&buffer, &item);
         printf("Consumed: %d\n", item.value);
+        buffer_dump(&buffer);
 
         pthread_cond_signal(&empty); // Notifica que hay espacio disponible
         pthread_mutex_unlock(&mutex);
