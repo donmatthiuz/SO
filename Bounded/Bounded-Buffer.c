@@ -10,6 +10,8 @@
 
 buffer_t buffer;
 pthread_mutex_t mutex;
+
+
 pthread_cond_t full, empty;
 
 
@@ -24,10 +26,18 @@ void* producer(void* arg) {
 
         while (buffer.size == buffer.capacity) { 
             pthread_cond_wait(&empty, &mutex);
+
+
+
+
         }
 
         buffer_insert(&buffer, &item); 
         printf("Productor %d: %d\n", producer_id, item.value);
+
+
+
+
         buffer_dump(&buffer);  
 
         pthread_cond_signal(&full);
@@ -43,7 +53,7 @@ void* producer(void* arg) {
 void* consumer(void* arg) {
     int consumer_id = *((int*)arg);
     int count = 0;
-
+    
     while (1) { 
         slot_t item;
 
@@ -54,6 +64,9 @@ void* consumer(void* arg) {
         }
 
         buffer_remove(&buffer, &item); 
+
+
+
         printf("Consumidor %d: %d\n", consumer_id, item.value);
         buffer_dump(&buffer);  
 
@@ -70,8 +83,14 @@ int main() {
     pthread_t producerThreads[PRODUCTORES], consumerThreads[CONSUMIDORES];
     int producer_ids[PRODUCTORES], consumer_ids[CONSUMIDORES];
 
+
+
+
+
+
     buffer_init(&buffer, 5);
     pthread_mutex_init(&mutex, NULL);
+
     pthread_cond_init(&full, NULL);
     pthread_cond_init(&empty, NULL);
 
@@ -84,6 +103,7 @@ int main() {
 
     for (int i = 0; i < CONSUMIDORES; i++) {
         consumer_ids[i] = i + 1;
+
         pthread_create(&consumerThreads[i], NULL, consumer, &consumer_ids[i]);
     }
 

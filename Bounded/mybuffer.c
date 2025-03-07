@@ -1,3 +1,13 @@
+/*
+
+Este no es mi implementacion de buffer la saque de esta otra implementacion del buffer
+link : https://github.com/oscarp-info/linux-thread-in-C/blob/main/20_prod_cons/parte_2/buffer.c
+
+
+*/
+
+
+
 #include "buffer.h"
 
 int buffer_init(buffer_t * buffer, int capacity){
