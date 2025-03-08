@@ -19,7 +19,7 @@ void* producer(void* arg) {
     int producer_id = *((int*)arg);
     int count = 0;
 
-    while (1) {  
+    while (count<ESCRITURA) {  
         slot_t item = {count + 1};  
 
         pthread_mutex_lock(&mutex);  
@@ -54,7 +54,7 @@ void* consumer(void* arg) {
     int consumer_id = *((int*)arg);
     int count = 0;
     
-    while (1) { 
+    while (count<ESCRITURA) { 
         slot_t item;
 
         pthread_mutex_lock(&mutex);
