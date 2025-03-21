@@ -10,12 +10,27 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason, void
             break;
 
         case LWS_CALLBACK_RECEIVE:
-
             printf("Mensaje recibido: %s\n", (char *)in);
 
-
+            // Mensaje de respuesta
             const char *response = "Mensaje recibido correctamente";
-            lws_write(wsi, (unsigned char *)response, strlen(response), LWS_WRITE_TEXT);
+            size_t response_len = strlen(response);
+
+            // lws_write necesita que el buffer tenga espacio adicional para LWS_PRE
+            unsigned char *buffer = (unsigned char *)malloc(LWS_PRE + response_len);
+            if (!buffer) {
+                printf("Error al asignar memoria\n");
+                return -1;
+            }
+
+            // Copiar la respuesta al buffer después del espacio de LWS_PRE
+            memcpy(buffer + LWS_PRE, response, response_len);
+
+            // Enviar el mensaje al cliente
+            lws_write(wsi, buffer + LWS_PRE, response_len, LWS_WRITE_TEXT);
+
+            // Liberar la memoria asignada
+            free(buffer);
             break;
 
         case LWS_CALLBACK_CLOSED:
@@ -36,7 +51,6 @@ static struct lws_protocols protocols[] = {
 int main() {
     struct lws_context *context;
     struct lws_context_creation_info info = {0};
-    struct lws *wsi;
 
     info.port = 9000;
     info.protocols = protocols;
@@ -49,11 +63,9 @@ int main() {
 
     printf("Servidor WebSocket corriendo en ws://localhost:9000\n");
 
-    
     while (1) {
         lws_service(context, 100);
     }
-
 
     lws_context_destroy(context);
     return 0;
