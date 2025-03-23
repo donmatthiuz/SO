@@ -20,6 +20,40 @@ void remove_spaces(char *str) {
     *j = '\0';
 }
 
+
+void extract_json(const char *input, char *output) {
+    int i = 0, j = 0;
+    
+   
+    while (input[i] != '{' && input[i] != '\0') {
+        i++;
+    }
+    
+  
+    if (input[i] == '\0') {
+        output[0] = '\0';  
+        return;
+    }
+    
+
+    int brace_count = 0;
+    while (input[i] != '\0') {
+        if (input[i] == '{') brace_count++;
+        if (input[i] == '}') brace_count--;
+        
+        output[j++] = input[i++];
+        
+        if (brace_count == 0) {
+            output[j] = '\0'; 
+            return;
+        }
+    }
+    
+    output[0] = '\0';  
+}
+
+
+
 int parse_json(const char *json_str, JsonPair *pairs, int max_pairs) {
     char buffer[256];
     strncpy(buffer, json_str, sizeof(buffer) - 1);
@@ -27,25 +61,24 @@ int parse_json(const char *json_str, JsonPair *pairs, int max_pairs) {
     remove_spaces(buffer);
 
     if (buffer[0] != '{' || buffer[strlen(buffer) - 1] != '}') {
-        return -1; // JSON inválido
+        return -1;
     }
 
     int count = 0;
     char *token = strtok(buffer + 1, ",}");
     while (token && count < max_pairs) {
         char *colon = strchr(token, ':');
-        if (!colon) return -1; // JSON inválido
-
+        if (!colon) return -1; 
         *colon = '\0';
         strncpy(pairs[count].key, token + 1, strlen(token) - 2);
         pairs[count].key[strlen(token) - 2] = '\0';
 
         char *value = colon + 1;
-        if (value[0] == '\"') {  // String
+        if (value[0] == '\"') { 
             strncpy(pairs[count].value, value + 1, strlen(value) - 2);
             pairs[count].value[strlen(value) - 2] = '\0';
             pairs[count].isNumber = 0;
-        } else {  // Número
+        } else { 
             strncpy(pairs[count].value, value, sizeof(pairs[count].value) - 1);
             pairs[count].isNumber = 1;
         }
@@ -58,7 +91,13 @@ int parse_json(const char *json_str, JsonPair *pairs, int max_pairs) {
 }
 
 int main() {
-    const char *json = "{ \"nombre\": \"Jose\", \"edad\": 25 }";
+
+    const char *input_string = "{ \"nombre\": \"Jose\", \"edad\": 25 }fasdfasdf";
+    char extracted_json[256];  
+
+    extract_json(input_string, extracted_json);
+
+    const char *json = extracted_json;
     JsonPair pairs[10];
 
     int num_pairs = parse_json(json, pairs, 10);

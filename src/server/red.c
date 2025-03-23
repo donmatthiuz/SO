@@ -10,22 +10,21 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason, void
             break;
 
         case LWS_CALLBACK_RECEIVE:
-            printf("Mensaje recibido: %s\n", (char *)in);
-
-            // Respuesta al cliente
-            const char *response = "Mensaje recibido correctamente";
-            size_t response_len = strlen(response);
-
-            unsigned char *buffer = (unsigned char *)malloc(LWS_PRE + response_len);
-            if (!buffer) {
+            char *message = malloc(len + 1);
+            if (!message) {
                 printf("Error al asignar memoria\n");
                 return -1;
             }
-
-            memcpy(buffer + LWS_PRE, response, response_len);
-            lws_write(wsi, buffer + LWS_PRE, response_len, LWS_WRITE_TEXT);
-
-            free(buffer);
+            
+            // Copiar exactamente 'len' bytes del mensaje recibido
+            memcpy(message, in, len);
+            message[len] = '\0'; // Agregar el terminador nulo
+            
+            printf("Mensaje recibido (longitud %zu): %s\n", len, message);
+            
+            // Resto del código para responder...
+            
+            free(message);
             break;
 
         case LWS_CALLBACK_CLOSED:
