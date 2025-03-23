@@ -16,7 +16,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason, void
             const char *response = "Mensaje recibido correctamente";
             size_t response_len = strlen(response);
 
-            unsigned char *buffer = (unsigned char *)calloc(1, LWS_PRE + response_len);
+            unsigned char *buffer = (unsigned char *)malloc(LWS_PRE + response_len);
             if (!buffer) {
                 printf("Error al asignar memoria\n");
                 return -1;
@@ -51,8 +51,6 @@ int main() {
     info.protocols = protocols;
     info.gid = -1;
     info.uid = -1;
-    
-    
 
     context = lws_create_context(&info);
     if (!context) {
