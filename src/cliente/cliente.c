@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include <libwebsockets.h>
 #include "getENV.c"
+#include "parser.c"
 
 // Variable global para controlar el estado de la conexión
 static int connection_open = 0; // 1 si está conectado, 0 si no
@@ -125,26 +126,29 @@ int main() {
     printf("Conexión establecida. Ahora puedes enviar mensajes.\n");
 
     while (connection_open) {
-        
         char user_input[256];
-        printf("Escribe un mensaje para enviar al servidor: ");
+        printf("Escribe tu usuario: ");
         if (fgets(user_input, sizeof(user_input), stdin)) {
-           
             user_input[strcspn(user_input, "\n")] = 0;
 
-            
-            if (strlen(user_input) > 0) {
-                unsigned char *buffer = (unsigned char *)calloc(1,LWS_PRE + strlen(user_input));
+           
+            char* json = crearJson_register(user_input);
+
+            if (json && strlen(json) > 0) {
+                unsigned char *buffer = (unsigned char *)calloc(1, LWS_PRE + strlen(json));
                 if (!buffer) {
                     printf("Error al asignar memoria\n");
                     continue;
                 }
 
-                
-                memcpy(buffer + LWS_PRE, user_input, strlen(user_input));
-                lws_write(wsi, buffer + LWS_PRE, strlen(user_input), LWS_WRITE_TEXT);
+                // Copiar el JSON al buffer WebSocket
+                memcpy(buffer + LWS_PRE, json, strlen(json));
+
+              
+                lws_write(wsi, buffer + LWS_PRE, strlen(json), LWS_WRITE_TEXT);
 
                 free(buffer);
+                free(json); 
             }
         }
     }

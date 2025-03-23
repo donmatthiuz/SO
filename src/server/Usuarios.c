@@ -27,7 +27,7 @@ Usuario** obtenerTodosLosUsuarios(Usuario* cabeza, int* cantidad);
 void imprimirUsuarios(Usuario* cabeza);
 void liberarLista(Usuario* cabeza);
 
-// Implementación de funciones
+
 Usuario* crearUsuario(const char* ip, EstadoUsuario status, const char* nombre) {
     Usuario* nuevo = (Usuario*)malloc(sizeof(*nuevo));
     if (!nuevo) {
