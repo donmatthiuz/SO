@@ -7,25 +7,25 @@
 #include <unistd.h>
 
 volatile int force_exit = 0;
-pthread_mutex_t mutex; // Mutex para sincronizar el acceso a los mensajes
+pthread_mutex_t mutex;
 
-// Estructura para datos de sesión
+
 struct per_session_data {
     char client_ip[50]; 
     pthread_t thread_id;
 };
 
-// Estructura para los datos del hilo
+
 struct thread_data {
     struct lws_context *context;
 };
 
-// Manejador de señales
+
 void sighandler(int sig) {
     force_exit = 1;
 }
 
-// Función que ejecutará cada hilo de cliente
+
 void *client_thread(void *data) {
     struct thread_data *td = (struct thread_data *)data;
 
