@@ -51,6 +51,7 @@ int main() {
     info.protocols = protocols;
     info.gid = -1;
     info.uid = -1;
+    info.iface = "127.0.0.1";
     
 
     context = lws_create_context(&info);
