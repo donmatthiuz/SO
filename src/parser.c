@@ -90,6 +90,27 @@ int parse_json(const char *json_str, JsonPair *pairs, int max_pairs) {
     return count;
 }
 
+
+void create_json(JsonPair *pairs, int num_pairs, char *output, int output_size) {
+    int offset = 0;
+    offset += snprintf(output + offset, output_size - offset, "{");
+
+    for (int i = 0; i < num_pairs; i++) {
+        if (pairs[i].isNumber) {
+            offset += snprintf(output + offset, output_size - offset, "\"%s\": %s", pairs[i].key, pairs[i].value);
+        } else {
+            offset += snprintf(output + offset, output_size - offset, "\"%s\": \"%s\"", pairs[i].key, pairs[i].value);
+        }
+
+        if (i < num_pairs - 1) {
+            offset += snprintf(output + offset, output_size - offset, ", ");
+        }
+    }
+
+    snprintf(output + offset, output_size - offset, "}");
+}
+
+
 int main() {
 
     const char *input_string = "{ \"nombre\": \"Jose\", \"edad\": 25 }fasdfasdf";
@@ -113,6 +134,17 @@ int main() {
             printf("%s: %s\n", pairs[i].key, pairs[i].value);
         }
     }
+
+
+
+    JsonPair pair[] = {
+        {"nombre", "Martin"},
+    };
+
+    char json_output[256];
+    create_json(pair, 3, json_output, sizeof(json_output));
+
+    printf("JSON generado: %s\n", json_output);
 
     return 0;
 }

@@ -14,7 +14,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason, void
             if (!message) {
                 printf("Error al asignar memoria\n");
                 return -1;
-            }
+            } 
             
             // Copiar exactamente 'len' bytes del mensaje recibido
             memcpy(message, in, len);
