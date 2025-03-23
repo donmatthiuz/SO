@@ -10,6 +10,9 @@
 #include <libwebsockets.h>
 #include "getENV.c"
 
+// Variable global para controlar el estado de la conexión
+static int connection_open = 0; // 1 si está conectado, 0 si no
+
 char* get_local_ip() {
     char hostbuffer[256];
     struct hostent *host_entry;
@@ -35,21 +38,7 @@ static int callback_client(struct lws *wsi, enum lws_callback_reasons reason, vo
     switch (reason) {
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
             printf("Conexión establecida con el servidor WebSocket\n");
-
-            // Enviar mensaje al servidor
-            const char *message = "Hola desde el cliente!";
-            size_t message_len = strlen(message);
-
-            unsigned char *buffer = (unsigned char *)malloc(LWS_PRE + message_len);
-            if (!buffer) {
-                printf("Error al asignar memoria\n");
-                return -1;
-            }
-
-            memcpy(buffer + LWS_PRE, message, message_len);
-            lws_write(wsi, buffer + LWS_PRE, message_len, LWS_WRITE_TEXT);
-
-            free(buffer);
+            connection_open = 1; // Marcar que la conexión está abierta
             break;
 
         case LWS_CALLBACK_CLIENT_RECEIVE:
@@ -58,11 +47,17 @@ static int callback_client(struct lws *wsi, enum lws_callback_reasons reason, vo
 
         case LWS_CALLBACK_CLOSED:
             printf("Conexión cerrada\n");
+            connection_open = 0; // Marcar que la conexión ha sido cerrada
+            break;
+
+        case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
+            printf("Error de conexión: %s\n", (char *)in);
             break;
 
         default:
             break;
     }
+
     return 0;
 }
 
@@ -72,24 +67,14 @@ static struct lws_protocols protocols[] = {
 };
 
 int main() {
-
-
-    //obtenmos la ip del servidor
-
+    //obtenemos la ip del servidor
     const char *archivo = ".env";
-
     VariableEntorno *variables = NULL;
-
     int cantidad = cargar_variables_entorno(archivo, &variables);
     if (cantidad < 0) {
         printf("Error al cargar las variables de entorno\n");
         return 1;
     }
-
-
-    
-
-
 
     struct lws_context_creation_info info = {0};
     struct lws_context *context;
@@ -116,7 +101,7 @@ int main() {
     struct lws_client_connect_info ccinfo = {0};
     ccinfo.context = context;
     ccinfo.address = variables[0].valor; // Dirección del servidor
-    ccinfo.port = atoi(variables[1].valor);;
+    ccinfo.port = atoi(variables[1].valor);
     ccinfo.path = "/";
     ccinfo.protocol = "chat-protocol";
     ccinfo.origin = local_ip; // Asignar la IP local al campo origin
@@ -128,8 +113,40 @@ int main() {
         return -1;
     }
 
-    while (1) {
+    // Esperar hasta que la conexión se haya establecido
+    while (!connection_open) {
         lws_service(context, 100);
+       
+        printf("Esperando a que la conexión se establezca...\n");
+        usleep(100000);  // Esperar un poco antes de seguir
+    }
+
+    
+    printf("Conexión establecida. Ahora puedes enviar mensajes.\n");
+
+    while (connection_open) {
+        
+        char user_input[256];
+        printf("Escribe un mensaje para enviar al servidor: ");
+        if (fgets(user_input, sizeof(user_input), stdin)) {
+           
+            user_input[strcspn(user_input, "\n")] = 0;
+
+            
+            if (strlen(user_input) > 0) {
+                unsigned char *buffer = (unsigned char *)calloc(1,LWS_PRE + strlen(user_input));
+                if (!buffer) {
+                    printf("Error al asignar memoria\n");
+                    continue;
+                }
+
+                
+                memcpy(buffer + LWS_PRE, user_input, strlen(user_input));
+                lws_write(wsi, buffer + LWS_PRE, strlen(user_input), LWS_WRITE_TEXT);
+
+                free(buffer);
+            }
+        }
     }
 
     lws_context_destroy(context);
