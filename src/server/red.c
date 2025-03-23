@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 volatile int force_exit = 0;
+pthread_mutex_t mutex; // Mutex para sincronizar el acceso a los mensajes
 
 // Estructura para datos de sesión
 struct per_session_data {
@@ -14,7 +15,7 @@ struct per_session_data {
     pthread_t thread_id;
 };
 
-
+// Estructura para los datos del hilo
 struct thread_data {
     struct lws_context *context;
 };
@@ -24,7 +25,7 @@ void sighandler(int sig) {
     force_exit = 1;
 }
 
-
+// Función que ejecutará cada hilo de cliente
 void *client_thread(void *data) {
     struct thread_data *td = (struct thread_data *)data;
 
@@ -45,7 +46,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             printf("Cliente conectado\n");
             lws_get_peer_simple(wsi, pss->client_ip, sizeof(pss->client_ip));
 
-            // Crear datos del hilo
+            
             struct thread_data *td = malloc(sizeof(struct thread_data));
             if (!td) {
                 printf("Error al asignar memoria para el thread\n");
@@ -54,7 +55,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
 
             td->context = lws_get_context(wsi);
 
-           
+            
             if (pthread_create(&pss->thread_id, NULL, client_thread, (void *)td) != 0) {
                 printf("Error al crear el hilo\n");
                 free(td);
@@ -70,7 +71,13 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             memcpy(message, in, len);
             message[len] = '\0';
 
+
+            pthread_mutex_lock(&mutex);
+
             printf("Mensaje de %s: %s\n", pss->client_ip, message);
+
+            // Desbloquear el mutex después de procesar el mensaje
+            pthread_mutex_unlock(&mutex);
             break;
         }
 
@@ -101,9 +108,16 @@ int main() {
     info.gid = -1;
     info.uid = -1;
 
+    // Inicializar el mutex
+    if (pthread_mutex_init(&mutex, NULL) != 0) {
+        printf("Error inicializando el mutex\n");
+        return -1;
+    }
+
     context = lws_create_context(&info);
     if (!context) {
         printf("Error creando el contexto WebSocket\n");
+        pthread_mutex_destroy(&mutex);
         return -1;
     }
 
@@ -114,7 +128,10 @@ int main() {
     }
 
     printf("Cerrando servidor...\n");
-    lws_context_destroy(context);
 
+    // Destruir el mutex antes de salir
+    pthread_mutex_destroy(&mutex);
+
+    lws_context_destroy(context);
     return 0;
 }
