@@ -47,7 +47,7 @@ int main() {
     struct lws_context_creation_info info = {0};
     struct lws_context *context;
 
-    info.port = 9000;
+    info.port = 5000;
     info.protocols = protocols;
     info.gid = -1;
     info.uid = -1;

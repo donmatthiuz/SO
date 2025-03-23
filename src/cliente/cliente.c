@@ -62,10 +62,10 @@ int main() {
     struct lws_client_connect_info ccinfo = {0};
     ccinfo.context = context;
     ccinfo.address = "localhost";
-    ccinfo.port = 9000;
+    ccinfo.port = 5000;
     ccinfo.path = "/";
     ccinfo.protocol = "chat-protocol";
-    ccinfo.origin = "localhost";
+    ccinfo.origin = "34.201.114.218";
 
     wsi = lws_client_connect_via_info(&ccinfo);
     if (!wsi) {
