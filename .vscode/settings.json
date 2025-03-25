@@ -4,6 +4,8 @@
     "array": "c",
     "string_view": "c",
     "type_traits": "c",
-    "stdio.h": "c"
+    "stdio.h": "c",
+    "string.h": "c",
+    "system_error": "c"
   }
 }

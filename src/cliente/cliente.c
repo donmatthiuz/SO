@@ -10,8 +10,9 @@
 #include <libwebsockets.h>
 #include "getENV.c"
 #include "parser.c"
+#include <pthread.h>
+#include <signal.h>
 
-// Variable global para controlar el estado de la conexión
 static int connection_open = 0; // 1 si está conectado, 0 si no
 
 char* get_local_ip() {
@@ -42,8 +43,11 @@ static int callback_client(struct lws *wsi, enum lws_callback_reasons reason, vo
             connection_open = 1; // Marcar que la conexión está abierta
             break;
 
-        case LWS_CALLBACK_CLIENT_RECEIVE:
-            printf("Respuesta del servidor: %s\n", (char *)in);
+        case  LWS_CALLBACK_CLIENT_RECEIVE:
+            // Mostrar mensaje recibido
+            printf("\nMensaje recibido: %s\n", (char *)in);
+            printf("> ");
+            fflush(stdout);  // Asegurarse de que el prompt se imprima de nuevo
             break;
 
         case LWS_CALLBACK_CLOSED:
@@ -67,8 +71,40 @@ static struct lws_protocols protocols[] = {
     { NULL, NULL, 0, 0 }
 };
 
+void* leer_mensajes(void *arg) {
+    struct lws *wsi = (struct lws*) arg;
+    char user_input[256];
+
+    while (connection_open) {
+        printf("> ");
+        if (fgets(user_input, sizeof(user_input), stdin)) {
+            user_input[strcspn(user_input, "\n")] = 0;  // Eliminar el salto de línea al final
+
+            // Crear JSON para el mensaje
+            char* json = crearJson_register(user_input);
+            if (json && strlen(json) > 0) {
+                unsigned char *buffer = (unsigned char *)calloc(1, LWS_PRE + strlen(json));
+                if (!buffer) {
+                    printf("Error al asignar memoria\n");
+                    return NULL;
+                }
+
+                // Copiar el JSON al buffer WebSocket
+                memcpy(buffer + LWS_PRE, json, strlen(json));
+
+                // Enviar el mensaje al servidor WebSocket
+                lws_write(wsi, buffer + LWS_PRE, strlen(json), LWS_WRITE_TEXT);
+
+                free(buffer);
+                free(json); 
+            }
+        }
+    }
+    return NULL;
+}
+
 int main() {
-    //obtenemos la ip del servidor
+    // obtenemos la ip del servidor
     const char *archivo = ".env";
     VariableEntorno *variables = NULL;
     int cantidad = cargar_variables_entorno(archivo, &variables);
@@ -117,41 +153,46 @@ int main() {
     // Esperar hasta que la conexión se haya establecido
     while (!connection_open) {
         lws_service(context, 100);
-       
         printf("Esperando a que la conexión se establezca...\n");
         usleep(100000);  // Esperar un poco antes de seguir
     }
 
-    
-    printf("Conexión establecida. Ahora puedes enviar mensajes.\n");
-
-    while (connection_open) {
-        char user_input[256];
-        printf("Escribe tu usuario: ");
-        if (fgets(user_input, sizeof(user_input), stdin)) {
-            user_input[strcspn(user_input, "\n")] = 0;
-
-           
-            char* json = crearJson_register(user_input);
-
-            if (json && strlen(json) > 0) {
-                unsigned char *buffer = (unsigned char *)calloc(1, LWS_PRE + strlen(json));
-                if (!buffer) {
-                    printf("Error al asignar memoria\n");
-                    continue;
-                }
-
-                // Copiar el JSON al buffer WebSocket
-                memcpy(buffer + LWS_PRE, json, strlen(json));
-
-              
-                lws_write(wsi, buffer + LWS_PRE, strlen(json), LWS_WRITE_TEXT);
-
-                free(buffer);
-                free(json); 
-            }
-        }
+    // Solo pedir el usuario una vez
+    char user_input[256];
+    printf("Escribe tu usuario: ");
+    if (fgets(user_input, sizeof(user_input), stdin)) {
+        user_input[strcspn(user_input, "\n")] = 0;  // Eliminar el salto de línea al final
     }
+
+    // Crear JSON para el usuario registrado
+    char* json = crearJson_register(user_input);
+    if (json && strlen(json) > 0) {
+        unsigned char *buffer = (unsigned char *)calloc(1, LWS_PRE + strlen(json));
+        if (!buffer) {
+            printf("Error al asignar memoria\n");
+            return -1;
+        }
+
+        // Copiar el JSON al buffer WebSocket
+        memcpy(buffer + LWS_PRE, json, strlen(json));
+
+        // Enviar el mensaje con el nombre de usuario al servidor WebSocket
+        lws_write(wsi, buffer + LWS_PRE, strlen(json), LWS_WRITE_TEXT);
+
+        free(buffer);
+        free(json); 
+    }
+
+    // Crear un hilo para leer mensajes
+    pthread_t hilo_lectura;
+    pthread_create(&hilo_lectura, NULL, leer_mensajes, (void*)wsi);
+
+    // Bucle principal para mantener la conexión abierta
+    while (connection_open) {
+        lws_service(context, 100);  // Continuar procesando la conexión
+    }
+
+    pthread_join(hilo_lectura, NULL);
 
     lws_context_destroy(context);
     return 0;

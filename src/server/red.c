@@ -6,63 +6,74 @@
 #include <signal.h>
 #include <unistd.h>
 
+#define MAX_CLIENTS 100
+
 volatile int force_exit = 0;
 pthread_mutex_t mutex;
 
-
 struct per_session_data {
-    char client_ip[50]; 
-    pthread_t thread_id;
+    char client_id[50];
+    char client_ip[50];
+    struct lws *wsi;
+    int is_active;
 };
 
+struct per_session_data clients[MAX_CLIENTS];
 
-struct thread_data {
-    struct lws_context *context;
-};
-
-
+// Added sighandler function
 void sighandler(int sig) {
     force_exit = 1;
 }
 
+void send_to_specific_client(const char* target_id, const char* message) {
+   
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].is_active && 
+            strcmp(clients[i].client_id, target_id) == 0) {
+            
+            int message_len = strlen(message);
+            unsigned char *buf = malloc(LWS_PRE + message_len);
+            if (!buf) {
+                printf("Memory allocation error\n");
+                pthread_mutex_unlock(&mutex);
+                return;
+            }
 
-void *client_thread(void *data) {
-    struct thread_data *td = (struct thread_data *)data;
-
-    while (lws_service(td->context, 50) >= 0 && !force_exit);
-
-    printf("Hilo de cliente terminado\n");
-    free(td);
-    pthread_exit(NULL);
+            memcpy(buf + LWS_PRE, message, message_len);
+            printf("Enviando mensaje al cliente %s \n",message);
+            lws_write(clients[i].wsi, buf + LWS_PRE, message_len, LWS_WRITE_TEXT);
+            
+            free(buf);
+            break;
+        }else{
+            printf("Cliente no encontrado");
+        }
+    }
+  
 }
 
-// Callback del WebSocket
-static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason, 
+static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
                          void *user, void *in, size_t len) {
     struct per_session_data *pss = (struct per_session_data *)user;
 
     switch (reason) {
         case LWS_CALLBACK_ESTABLISHED: {
-            printf("Cliente conectado\n");
             lws_get_peer_simple(wsi, pss->client_ip, sizeof(pss->client_ip));
+            snprintf(pss->client_id, sizeof(pss->client_id), "user_%s", pss->client_ip);
+            pss->wsi = wsi;
+            pss->is_active = 1;
 
-            
-            struct thread_data *td = malloc(sizeof(struct thread_data));
-            if (!td) {
-                printf("Error al asignar memoria para el thread\n");
-                return -1;
+            pthread_mutex_lock(&mutex);
+            for (int i = 0; i < MAX_CLIENTS; i++) {
+                if (!clients[i].is_active) {
+                    memcpy(&clients[i], pss, sizeof(struct per_session_data));
+                    break;
+                }
             }
+            send_to_specific_client("user_127.0.0.1", pss->client_id);
+            pthread_mutex_unlock(&mutex);
 
-            td->context = lws_get_context(wsi);
-
-            
-            if (pthread_create(&pss->thread_id, NULL, client_thread, (void *)td) != 0) {
-                printf("Error al crear el hilo\n");
-                free(td);
-                return -1;
-            }
-
-            printf("Hilo creado para %s\n", pss->client_ip);
+            printf("Cliente conectado: %s\n", pss->client_id);
             break;
         }
 
@@ -76,15 +87,27 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
 
             printf("Mensaje de %s: %s\n", pss->client_ip, message);
 
-            // Desbloquear el mutex después de procesar el mensaje
+            printf("Siguiente\n");
+            send_to_specific_client("user_127.0.0.1", pss->client_id);
             pthread_mutex_unlock(&mutex);
+
+            
+            
             break;
         }
 
-        case LWS_CALLBACK_CLOSED:
-            printf("Cliente %s desconectado\n", pss->client_ip);
-            pthread_cancel(pss->thread_id); // Terminar el hilo
+        case LWS_CALLBACK_CLOSED: {
+            pthread_mutex_lock(&mutex);
+            for (int i = 0; i < MAX_CLIENTS; i++) {
+                if (strcmp(clients[i].client_id, pss->client_id) == 0) {
+                    clients[i].is_active = 0;
+                    break;
+                }
+            }
+            pthread_mutex_unlock(&mutex);
+            printf("Cliente desconectado: %s\n", pss->client_id);
             break;
+        }
 
         default:
             break;
@@ -103,12 +126,13 @@ int main() {
     struct lws_context_creation_info info = {0};
     struct lws_context *context;
 
+    memset(clients, 0, sizeof(clients));
+
     info.port = 5000;
     info.protocols = protocols;
     info.gid = -1;
     info.uid = -1;
 
-    // Inicializar el mutex
     if (pthread_mutex_init(&mutex, NULL) != 0) {
         printf("Error inicializando el mutex\n");
         return -1;
@@ -128,10 +152,7 @@ int main() {
     }
 
     printf("Cerrando servidor...\n");
-
-    // Destruir el mutex antes de salir
     pthread_mutex_destroy(&mutex);
-
     lws_context_destroy(context);
     return 0;
 }
