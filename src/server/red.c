@@ -261,7 +261,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             pthread_mutex_lock(&mutex);
             for (int i = 0; i < MAX_USUARIOS; i++)
             {
-                if (usuarios[i].activo)
+                if (usuarios[i].activo && usuarios[i].wsi != wsi) // Evitar enviarlo al mismo cliente que lo envió
                 {
                     int len_msg = strlen(message);
                     unsigned char *buf = malloc(LWS_PRE + len_msg);
@@ -278,12 +278,18 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             }
             pthread_mutex_unlock(&mutex);
         }
+
         else if (strcmp(tipo, "private") == 0)
         {
             const char *destino = buscar_valor_por_clave(pares, n, "target");
             if (destino)
+            {
+                // Verifica si el mensaje ya fue enviado a este destinatario
+                printf("[PRIVATE] Enviando mensaje a %s\n", destino);
                 send_to_specific_client(destino, message);
+            }
         }
+
         else if (strcmp(tipo, "list_users") == 0)
         {
             printf("[LISTA] %s pidió la lista de usuarios\n", sender);
