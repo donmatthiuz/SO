@@ -9,12 +9,67 @@
 #include <netdb.h>
 #include <libwebsockets.h>
 #include "getENV.c"
-#include "parser.c"
+#include "parser.h"
 #include <pthread.h>
 #include <signal.h>
 
 static int connection_open = 0;             // 1 si está conectado, 0 si no
 static char nombre_usuario_global[50] = ""; // Nombre del usuario actual
+
+const char *buscar_valor_por_clave(JsonPair *pares, int cantidad, const char *clave)
+{
+    for (int i = 0; i < cantidad; i++)
+    {
+        if (strcmp(pares[i].key, clave) == 0)
+        {
+            return pares[i].value;
+        }
+    }
+    return "";
+}
+
+void mostrar_mensaje_formateado(const char *json)
+{
+    JsonPair pares[10];
+    int n = parse_json(json, pares, 10);
+
+    const char *type = buscar_valor_por_clave(pares, n, "type");
+    const char *sender = buscar_valor_por_clave(pares, n, "sender");
+    const char *content = buscar_valor_por_clave(pares, n, "content");
+    const char *timestamp = buscar_valor_por_clave(pares, n, "timestamp");
+
+    if (strcmp(type, "broadcast") == 0)
+    {
+        printf("\n\033[1;34m[BROADCAST]\033[0m \033[1;32m%s\033[0m: %s\n", sender, content);
+    }
+    else if (strcmp(type, "private") == 0)
+    {
+        printf("\t\n\033[1;35m[PRIVADO]\033[0m \033[1;32m%s\033[0m: %s\n", sender, content);
+    }
+    else if (strcmp(type, "list_response") == 0)
+    {
+        printf("\n\033[1;36m[USUARIOS CONECTADOS]\033[0m: %s\n", content);
+    }
+    else if (strcmp(type, "user_info") == 0)
+    {
+        printf("\n\033[1;36m[INFO USUARIO]\033[0m: %s\n", content);
+    }
+    else if (strcmp(type, "change_status") == 0)
+    {
+        printf("\n\033[1;33m[ESTADO CAMBIADO]\033[0m \033[1;32m%s\033[0m: %s\n", sender, content);
+    }
+    else if (strcmp(type, "disconnect") == 0)
+    {
+        printf("\n\033[1;31m[DESCONECTADO]\033[0m \033[1;32m%s\033[0m\n", sender);
+    }
+    else
+    {
+        printf("\n\033[1;37m[OTRO]\033[0m %s\n", json);
+    }
+
+    printf("> ");
+    fflush(stdout);
+}
 
 // Función para obtener la IP local del equipo
 char *get_local_ip()
@@ -55,10 +110,7 @@ static int callback_client(struct lws *wsi, enum lws_callback_reasons reason, vo
         break;
 
     case LWS_CALLBACK_CLIENT_RECEIVE:
-        // Mostrar mensaje recibido
-        printf("\nMensaje recibido: %s\n", (char *)in);
-        printf("> ");
-        fflush(stdout); // Asegurar que el prompt se imprima nuevamente
+        mostrar_mensaje_formateado((char *)in);
         break;
 
     case LWS_CALLBACK_CLOSED:
