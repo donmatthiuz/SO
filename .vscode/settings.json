@@ -1,11 +1,14 @@
 {
   "files.associations": {
+    "*.y": "yacc",
+    "*.l": "lex",
     "*.rmd": "markdown",
     "array": "c",
     "string_view": "c",
     "type_traits": "c",
     "stdio.h": "c",
     "string.h": "c",
-    "system_error": "c"
+    "system_error": "c",
+    "pthread.h": "c"
   }
 }

@@ -9,107 +9,262 @@
 #include <netdb.h>
 #include <libwebsockets.h>
 #include "getENV.c"
-#include "parser.c"
+#include "parser.h"
 #include <pthread.h>
 #include <signal.h>
 
-static int connection_open = 0; // 1 si está conectado, 0 si no
+static int connection_open = 0;
+static char nombre_usuario_global[50] = "";
 
-char* get_local_ip() {
+const char *color_info = "\033[1;36m";
+const char *color_wait = "\033[1;33m";
+const char *color_user_input = "\033[1;32m";
+const char *color_error = "\033[1;31m";
+
+const char *color_labels = "\033[1;36m";        // celeste
+const char *color_message = "\033[1;37m";       // blanco
+const char *color_private_label = "\033[1;35m"; // rosa
+const char *color_other_user = "\033[1;33m";    // amarillo
+const char *color_my_user = "\033[1;32m";       // verde
+const char *color_desconection = "\033[1;31m";  // rojo
+const char *color_input = "\033[1;30m";         // gris
+const char *color_reset = "\033[0m";
+
+/*
+    Devuelve el valor asociado a una clave de un dataset clave-valor, si no existe devuelve vacío
+*/
+const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
+{
+    for (int i = 0; i < cantidad; i++)
+    {
+        if (strcmp(pares[i].key, clave) == 0)
+        {
+            return pares[i].value;
+        }
+    }
+    return "";
+}
+
+/*
+    Recibe un json y lo muestra de una mejor forma de acuerdo al tipo de mensaje
+*/
+void showFormattedMessage(const char *json)
+{
+    JsonPair pares[10];
+    int n = parse_json(json, pares, 10);
+
+    const char *type = getValueByKey(pares, n, "type");
+    const char *sender = getValueByKey(pares, n, "sender");
+    const char *content = getValueByKey(pares, n, "content");
+    const char *timestamp = getValueByKey(pares, n, "timestamp");
+    const char *you_label = (strcmp(sender, nombre_usuario_global) == 0) ? "(YOU)" : "";
+
+    if (strcmp(type, "register") == 0)
+    {
+        if (strcmp(sender, nombre_usuario_global) == 0)
+        {
+            printf("\n%s[USUARIO NUEVO]%s %s%s te has unido al chat.%s\n", color_labels, color_reset, color_my_user, sender, color_reset);
+        }
+        else
+        {
+            printf("\n%s[USUARIO NUEVO]%s %s%s se ha unido al chat.%s\n", color_labels, color_reset, color_other_user, sender, color_reset);
+        }
+        return;
+    }
+
+    if (strcmp(type, "broadcast") == 0)
+    {
+        if (strcmp(sender, nombre_usuario_global) == 0)
+        {
+            printf("\n%s[BROADCAST] %s%s (YOU)%s: %s%s", color_labels, color_my_user, sender, color_reset, color_message, content);
+        }
+        else
+        {
+            printf("\n%s[BROADCAST] %s%s: %s%s", color_labels, color_other_user, sender, color_reset, content);
+        }
+    }
+
+    else if (strcmp(type, "private") == 0)
+    {
+        if (strcmp(sender, nombre_usuario_global) == 0)
+        {
+            printf("\n\t%s[PRIVATE] %s%s (YOU)%s: %s%s", color_private_label, color_my_user, sender, color_reset, color_message, content);
+        }
+        else
+        {
+            printf("\n\t%s[PRIVATE] %s%s: %s%s", color_private_label, color_other_user, sender, color_reset, content);
+        }
+    }
+    else if (strcmp(type, "list_response") == 0)
+    {
+        printf("\n%s[USUARIOS CONECTADOS]%s: %s%s", color_labels, color_reset, color_message, content);
+    }
+    else if (strcmp(type, "user_info") == 0)
+    {
+        printf("\n%s[INFO USUARIO]%s: %s%s", color_labels, color_reset, color_message, content);
+    }
+    else if (strcmp(type, "change_status") == 0)
+    {
+        printf("\n%s[ESTADO CAMBIADO]%s %s%s: %s", color_desconection, color_reset, color_my_user, sender, content);
+    }
+    else if (strcmp(type, "disconnect") == 0)
+    {
+        printf("\n%s[DESCONECTADO]%s %s%s %s", color_desconection, color_reset, color_my_user, sender, you_label);
+    }
+    else
+    {
+        printf("\n%s[OTRO]%s %s", color_reset, color_message, json);
+    }
+
+    printf("\n\n\t%s> ", color_input);
+    fflush(stdout);
+}
+
+// Función para obtener la IP local del equipo
+char *get_local_ip()
+{
     char hostbuffer[256];
     struct hostent *host_entry;
     int hostname;
 
+    // Obtener el nombre del host
     hostname = gethostname(hostbuffer, sizeof(hostbuffer));
-    if (hostname == -1) {
+    if (hostname == -1)
+    {
         perror("gethostname failed");
         return NULL;
     }
 
+    // Obtener la información del host
     host_entry = gethostbyname(hostbuffer);
-    if (host_entry == NULL) {
+    if (host_entry == NULL)
+    {
         perror("gethostbyname failed");
         return NULL;
     }
 
-    struct in_addr *address = (struct in_addr*) host_entry->h_addr_list[0];
+    // Obtener la dirección IP y convertirla a string
+    struct in_addr *address = (struct in_addr *)host_entry->h_addr_list[0];
     return inet_ntoa(*address);
 }
 
-static int callback_client(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
-    switch (reason) {
-        case LWS_CALLBACK_CLIENT_ESTABLISHED:
-            printf("Conexión establecida con el servidor WebSocket\n");
-            connection_open = 1; // Marcar que la conexión está abierta
-            break;
+// Función de callback para manejar eventos de WebSocket
+static int callback_client(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len)
+{
+    switch (reason)
+    {
+    case LWS_CALLBACK_CLIENT_ESTABLISHED:
+        printf("%sConexión establecida con el servidor WebSocket%s\n", color_info, color_reset);
+        connection_open = 1; // Marcar que la conexión está abierta
+        break;
 
-        case  LWS_CALLBACK_CLIENT_RECEIVE:
-            // Mostrar mensaje recibido
-            printf("\nMensaje recibido: %s\n", (char *)in);
-            printf("> ");
-            fflush(stdout);  // Asegurarse de que el prompt se imprima de nuevo
-            break;
+    case LWS_CALLBACK_CLIENT_RECEIVE:
+        showFormattedMessage((char *)in);
+        break;
 
-        case LWS_CALLBACK_CLOSED:
-            printf("Conexión cerrada\n");
-            connection_open = 0; // Marcar que la conexión ha sido cerrada
-            break;
+    case LWS_CALLBACK_CLOSED:
+        printf("%sConexión cerrada%s\n", color_info, color_reset);
+        connection_open = 0; // Marcar que la conexión ha sido cerrada
+        break;
 
-        case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-            printf("Error de conexión: %s\n", (char *)in);
-            break;
+    case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
+        printf("%sError de conexión: %s%s\n", color_error, (char *)in, color_reset);
+        break;
 
-        default:
-            break;
+    default:
+        break;
     }
-
     return 0;
 }
 
+// Definición del protocolo WebSocket
 static struct lws_protocols protocols[] = {
-    { "chat-protocol", callback_client, 0, 4096 },
-    { NULL, NULL, 0, 0 }
-};
+    {"chat-protocol", callback_client, 0, 4096},
+    {NULL, NULL, 0, 0}};
 
-void* leer_mensajes(void *arg) {
-    struct lws *wsi = (struct lws*) arg;
+// Función que permite al usuario leer y enviar mensajes
+void *leer_mensajes(void *arg)
+{
+    struct lws *wsi = (struct lws *)arg;
     char user_input[256];
 
-    while (connection_open) {
-        printf("> ");
-        if (fgets(user_input, sizeof(user_input), stdin)) {
-            user_input[strcspn(user_input, "\n")] = 0;  // Eliminar el salto de línea al final
+    while (connection_open)
+    {
+        // printf("> ");
+        if (fgets(user_input, sizeof(user_input), stdin))
+        {
+            user_input[strcspn(user_input, "\n")] = 0; // Eliminar el salto de línea
 
-            // Crear JSON para el mensaje
-            char* json = crearJson_register(user_input);
-            if (json && strlen(json) > 0) {
+            char *json = NULL;
+
+            // Procesar comandos específicos del usuario
+            if (strncmp(user_input, "/broadcast ", 11) == 0)
+            {
+                json = crearJson_broadcast(nombre_usuario_global, user_input + 11);
+            }
+            else if (strncmp(user_input, "/private ", 9) == 0)
+            {
+                char *space = strchr(user_input + 9, ' ');
+                if (space)
+                {
+                    *space = '\0';
+                    char *dest = user_input + 9;
+                    char *msg = space + 1;
+                    json = crearJson_private(nombre_usuario_global, dest, msg);
+                }
+            }
+            else if (strncmp(user_input, "/list", 5) == 0)
+            {
+                json = crearJson_list_users(nombre_usuario_global);
+            }
+            else if (strncmp(user_input, "/info ", 6) == 0)
+            {
+                json = crearJson_user_info(nombre_usuario_global, user_input + 6);
+            }
+            else if (strncmp(user_input, "/status ", 8) == 0)
+            {
+                json = crearJson_change_status(nombre_usuario_global, user_input + 8);
+            }
+            else if (strncmp(user_input, "/exit", 5) == 0)
+            {
+                json = crearJson_disconnect(nombre_usuario_global);
+                connection_open = 0;
+            }
+            else
+            {
+                json = crearJson_broadcast(nombre_usuario_global, user_input);
+            }
+
+            // Enviar mensaje si es válido
+            if (json && strlen(json) > 0)
+            {
                 unsigned char *buffer = (unsigned char *)calloc(1, LWS_PRE + strlen(json));
-                if (!buffer) {
+                if (!buffer)
+                {
                     printf("Error al asignar memoria\n");
                     return NULL;
                 }
 
-                // Copiar el JSON al buffer WebSocket
                 memcpy(buffer + LWS_PRE, json, strlen(json));
-
-                // Enviar el mensaje al servidor WebSocket
                 lws_write(wsi, buffer + LWS_PRE, strlen(json), LWS_WRITE_TEXT);
 
                 free(buffer);
-                free(json); 
+                free(json);
             }
         }
     }
     return NULL;
 }
 
-int main() {
-    // obtenemos la ip del servidor
+int main()
+{
+    // Cargar variables de entorno desde el archivo .env
     const char *archivo = ".env";
     VariableEntorno *variables = NULL;
     int cantidad = cargar_variables_entorno(archivo, &variables);
-    if (cantidad < 0) {
-        printf("Error al cargar las variables de entorno\n");
+    if (cantidad < 0)
+    {
+        printf("%sError al cargar las variables de entorno%s\n", color_error, color_reset);
         return 1;
     }
 
@@ -119,21 +274,24 @@ int main() {
 
     // Obtener la IP local
     char *local_ip = get_local_ip();
-    if (local_ip == NULL) {
-        printf("No se pudo obtener la IP local\n");
+    if (local_ip == NULL)
+    {
+        printf("%sNo se pudo obtener la IP local%s\n", color_error, color_reset);
         return -1;
     }
 
+    // Configuración del contexto WebSocket
     info.port = CONTEXT_PORT_NO_LISTEN;
     info.protocols = protocols;
 
     context = lws_create_context(&info);
-    if (!context) {
-        printf("Error creando el contexto WebSocket\n");
+    if (!context)
+    {
+        printf("%sError creando el contexto WebSocket%s\n", color_error, color_reset);
         return -1;
     }
 
-    printf("Cliente WebSocket intentando conectarse a ws://%s:9000/chat\n", local_ip);
+    printf("%sCliente WebSocket intentando conectarse a ws://%s:%s/chat%s\n", color_info, variables[0].valor, variables[1].valor, color_reset);
 
     struct lws_client_connect_info ccinfo = {0};
     ccinfo.context = context;
@@ -143,57 +301,59 @@ int main() {
     ccinfo.protocol = "chat-protocol";
     ccinfo.origin = local_ip; // Asignar la IP local al campo origin
 
+    // Conectar al servidor WebSocket
     wsi = lws_client_connect_via_info(&ccinfo);
-    if (!wsi) {
-        printf("Error al intentar conectar al servidor\n");
+    if (!wsi)
+    {
+        printf("%sError al intentar conectar al servidor%s\n", color_error, color_reset);
         lws_context_destroy(context);
         return -1;
     }
 
     // Esperar hasta que la conexión se haya establecido
-    while (!connection_open) {
+    while (!connection_open)
+    {
         lws_service(context, 100);
-        printf("Esperando a que la conexión se establezca...\n");
-        usleep(100000);  // Esperar un poco antes de seguir
+        printf("%sEsperando a que la conexión se establezca...%s\n", color_wait, color_reset);
+        usleep(100000);
     }
 
-    // Solo pedir el usuario una vez
-    char user_input[256];
-    printf("Escribe tu usuario: ");
-    if (fgets(user_input, sizeof(user_input), stdin)) {
-        user_input[strcspn(user_input, "\n")] = 0;  // Eliminar el salto de línea al final
+    // Solicitar nombre de usuario
+    printf("%sEscribe tu usuario: %s", color_user_input, color_input);
+    if (fgets(nombre_usuario_global, sizeof(nombre_usuario_global), stdin))
+    {
+        nombre_usuario_global[strcspn(nombre_usuario_global, "\n")] = 0; // Eliminar salto de línea
     }
 
-    // Crear JSON para el usuario registrado
-    char* json = crearJson_register(user_input);
-    if (json && strlen(json) > 0) {
+    // Enviar nombre de usuario al servidor
+    char *json = crearJson_register(nombre_usuario_global);
+    if (json && strlen(json) > 0)
+    {
         unsigned char *buffer = (unsigned char *)calloc(1, LWS_PRE + strlen(json));
-        if (!buffer) {
-            printf("Error al asignar memoria\n");
+        if (!buffer)
+        {
+            printf("%sError al asignar memoria%s\n", color_error, color_reset);
             return -1;
         }
 
-        // Copiar el JSON al buffer WebSocket
         memcpy(buffer + LWS_PRE, json, strlen(json));
-
-        // Enviar el mensaje con el nombre de usuario al servidor WebSocket
         lws_write(wsi, buffer + LWS_PRE, strlen(json), LWS_WRITE_TEXT);
 
         free(buffer);
-        free(json); 
+        free(json);
     }
 
-    // Crear un hilo para leer mensajes
+    // Crear un hilo para la lectura de mensajes
     pthread_t hilo_lectura;
-    pthread_create(&hilo_lectura, NULL, leer_mensajes, (void*)wsi);
+    pthread_create(&hilo_lectura, NULL, leer_mensajes, (void *)wsi);
 
-    // Bucle principal para mantener la conexión abierta
-    while (connection_open) {
-        lws_service(context, 100);  // Continuar procesando la conexión
+    // Bucle principal para mantener la conexión
+    while (connection_open)
+    {
+        lws_service(context, 100);
     }
 
     pthread_join(hilo_lectura, NULL);
-
     lws_context_destroy(context);
     return 0;
 }
