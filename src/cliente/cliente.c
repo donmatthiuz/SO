@@ -13,10 +13,27 @@
 #include <pthread.h>
 #include <signal.h>
 
-static int connection_open = 0;             // 1 si está conectado, 0 si no
-static char nombre_usuario_global[50] = ""; // Nombre del usuario actual
+static int connection_open = 0;
+static char nombre_usuario_global[50] = "";
 
-const char *buscar_valor_por_clave(JsonPair *pares, int cantidad, const char *clave)
+const char *color_info = "\033[1;36m";
+const char *color_wait = "\033[1;33m";
+const char *color_user_input = "\033[1;32m";
+const char *color_error = "\033[1;31m";
+
+const char *color_labels = "\033[1;36m";        // celeste
+const char *color_message = "\033[1;37m";       // blanco
+const char *color_private_label = "\033[1;35m"; // rosa
+const char *color_other_user = "\033[1;33m";    // amarillo
+const char *color_my_user = "\033[1;32m";       // verde
+const char *color_desconection = "\033[1;31m";  // rojo
+const char *color_input = "\033[1;30m";         // gris
+const char *color_reset = "\033[0m";
+
+/*
+    Devuelve el valor asociado a una clave de un dataset clave-valor, si no existe devuelve vacío
+*/
+const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
 {
     for (int i = 0; i < cantidad; i++)
     {
@@ -28,26 +45,20 @@ const char *buscar_valor_por_clave(JsonPair *pares, int cantidad, const char *cl
     return "";
 }
 
-void mostrar_mensaje_formateado(const char *json)
+/*
+    Recibe un json y lo muestra de una mejor forma de acuerdo al tipo de mensaje
+*/
+void showFormattedMessage(const char *json)
 {
     JsonPair pares[10];
     int n = parse_json(json, pares, 10);
 
-    const char *type = buscar_valor_por_clave(pares, n, "type");
-    const char *sender = buscar_valor_por_clave(pares, n, "sender");
-    const char *content = buscar_valor_por_clave(pares, n, "content");
-    const char *timestamp = buscar_valor_por_clave(pares, n, "timestamp");
+    const char *type = getValueByKey(pares, n, "type");
+    const char *sender = getValueByKey(pares, n, "sender");
+    const char *content = getValueByKey(pares, n, "content");
+    const char *timestamp = getValueByKey(pares, n, "timestamp");
     const char *you_label = (strcmp(sender, nombre_usuario_global) == 0) ? "(YOU)" : "";
 
-    const char *color_labels = "\033[1;36m";        // celeste
-    const char *color_my_user = "\033[1;32m";       // verde
-    const char *color_other_user = "\033[1;33m";    // amarillo
-    const char *color_message = "\033[1;37m";       // blanco
-    const char *color_private_label = "\033[1;35m"; // rosa
-    const char *color_desconection = "\033[1;31m";  // rojo
-    const char *color_reset = "\033[0m";
-
-    // Mensaje de "registro" (cuando un nuevo usuario se une)
     if (strcmp(type, "register") == 0)
     {
         if (strcmp(sender, nombre_usuario_global) == 0)
@@ -61,7 +72,6 @@ void mostrar_mensaje_formateado(const char *json)
         return;
     }
 
-    // Mostrar mensajes de tipo broadcast
     if (strcmp(type, "broadcast") == 0)
     {
         if (strcmp(sender, nombre_usuario_global) == 0)
@@ -73,7 +83,7 @@ void mostrar_mensaje_formateado(const char *json)
             printf("\n%s[BROADCAST] %s%s: %s%s", color_labels, color_other_user, sender, color_reset, content);
         }
     }
-    // Mostrar mensajes privados
+
     else if (strcmp(type, "private") == 0)
     {
         if (strcmp(sender, nombre_usuario_global) == 0)
@@ -103,11 +113,10 @@ void mostrar_mensaje_formateado(const char *json)
     }
     else
     {
-        printf("\n%s[OTRO]%s %s", color_reset, color_message, json); // Asegúrate de que json sea un char*
+        printf("\n%s[OTRO]%s %s", color_reset, color_message, json);
     }
 
-    // Mover el cursor a la siguiente línea
-    printf("\n> ");
+    printf("\n\n\t%s> ", color_input);
     fflush(stdout);
 }
 
@@ -145,21 +154,21 @@ static int callback_client(struct lws *wsi, enum lws_callback_reasons reason, vo
     switch (reason)
     {
     case LWS_CALLBACK_CLIENT_ESTABLISHED:
-        printf("Conexión establecida con el servidor WebSocket\n");
+        printf("%sConexión establecida con el servidor WebSocket%s\n", color_info, color_reset);
         connection_open = 1; // Marcar que la conexión está abierta
         break;
 
     case LWS_CALLBACK_CLIENT_RECEIVE:
-        mostrar_mensaje_formateado((char *)in);
+        showFormattedMessage((char *)in);
         break;
 
     case LWS_CALLBACK_CLOSED:
-        printf("Conexión cerrada\n");
+        printf("%sConexión cerrada%s\n", color_info, color_reset);
         connection_open = 0; // Marcar que la conexión ha sido cerrada
         break;
 
     case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-        printf("Error de conexión: %s\n", (char *)in);
+        printf("%sError de conexión: %s%s\n", color_error, (char *)in, color_reset);
         break;
 
     default:
@@ -181,7 +190,7 @@ void *leer_mensajes(void *arg)
 
     while (connection_open)
     {
-        printf("> ");
+        // printf("> ");
         if (fgets(user_input, sizeof(user_input), stdin))
         {
             user_input[strcspn(user_input, "\n")] = 0; // Eliminar el salto de línea
@@ -255,7 +264,7 @@ int main()
     int cantidad = cargar_variables_entorno(archivo, &variables);
     if (cantidad < 0)
     {
-        printf("Error al cargar las variables de entorno\n");
+        printf("%sError al cargar las variables de entorno%s\n", color_error, color_reset);
         return 1;
     }
 
@@ -267,7 +276,7 @@ int main()
     char *local_ip = get_local_ip();
     if (local_ip == NULL)
     {
-        printf("No se pudo obtener la IP local\n");
+        printf("%sNo se pudo obtener la IP local%s\n", color_error, color_reset);
         return -1;
     }
 
@@ -278,11 +287,11 @@ int main()
     context = lws_create_context(&info);
     if (!context)
     {
-        printf("Error creando el contexto WebSocket\n");
+        printf("%sError creando el contexto WebSocket%s\n", color_error, color_reset);
         return -1;
     }
 
-    printf("Cliente WebSocket intentando conectarse a ws://%s:%s/chat\n", variables[0].valor, variables[1].valor);
+    printf("%sCliente WebSocket intentando conectarse a ws://%s:%s/chat%s\n", color_info, variables[0].valor, variables[1].valor, color_reset);
 
     struct lws_client_connect_info ccinfo = {0};
     ccinfo.context = context;
@@ -296,7 +305,7 @@ int main()
     wsi = lws_client_connect_via_info(&ccinfo);
     if (!wsi)
     {
-        printf("Error al intentar conectar al servidor\n");
+        printf("%sError al intentar conectar al servidor%s\n", color_error, color_reset);
         lws_context_destroy(context);
         return -1;
     }
@@ -305,12 +314,12 @@ int main()
     while (!connection_open)
     {
         lws_service(context, 100);
-        printf("Esperando a que la conexión se establezca...\n");
+        printf("%sEsperando a que la conexión se establezca...%s\n", color_wait, color_reset);
         usleep(100000);
     }
 
     // Solicitar nombre de usuario
-    printf("Escribe tu usuario: ");
+    printf("%sEscribe tu usuario: %s", color_user_input, color_input);
     if (fgets(nombre_usuario_global, sizeof(nombre_usuario_global), stdin))
     {
         nombre_usuario_global[strcspn(nombre_usuario_global, "\n")] = 0; // Eliminar salto de línea
@@ -323,7 +332,7 @@ int main()
         unsigned char *buffer = (unsigned char *)calloc(1, LWS_PRE + strlen(json));
         if (!buffer)
         {
-            printf("Error al asignar memoria\n");
+            printf("%sError al asignar memoria%s\n", color_error, color_reset);
             return -1;
         }
 
