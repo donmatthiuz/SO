@@ -252,6 +252,30 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
         if (strcmp(tipo, "register") == 0)
         {
             registrar_usuario(sender, pss->client_ip, wsi);
+
+            // Notificar a todos los usuarios que un nuevo usuario se ha registrado
+            char mensaje_nuevo_usuario[256];
+            snprintf(mensaje_nuevo_usuario, sizeof(mensaje_nuevo_usuario), "{\"type\":\"register\",\"sender\":\"%s\",\"content\":\"\"}", sender);
+
+            pthread_mutex_lock(&mutex);
+            for (int i = 0; i < MAX_USUARIOS; i++)
+            {
+                if (usuarios[i].activo && usuarios[i].wsi != wsi) // Evitar enviarlo al mismo cliente que se registró
+                {
+                    int len_msg = strlen(mensaje_nuevo_usuario);
+                    unsigned char *buf = malloc(LWS_PRE + len_msg);
+                    if (!buf)
+                    {
+                        printf("[ERROR] Memoria insuficiente para el mensaje de registro\n");
+                        continue;
+                    }
+                    memcpy(buf + LWS_PRE, mensaje_nuevo_usuario, len_msg);
+                    lws_write(usuarios[i].wsi, buf + LWS_PRE, len_msg, LWS_WRITE_TEXT);
+                    free(buf);
+                    printf("[INFO] Mensaje de registro enviado a %s\n", usuarios[i].nombre);
+                }
+            }
+            pthread_mutex_unlock(&mutex);
         }
         else if (strcmp(tipo, "broadcast") == 0)
         {
