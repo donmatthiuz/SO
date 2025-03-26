@@ -37,25 +37,26 @@ void mostrar_mensaje_formateado(const char *json)
     const char *sender = buscar_valor_por_clave(pares, n, "sender");
     const char *content = buscar_valor_por_clave(pares, n, "content");
     const char *timestamp = buscar_valor_por_clave(pares, n, "timestamp");
+    const char *you_label = (strcmp(sender, nombre_usuario_global) == 0) ? "(YOU)" : "";
 
-    // Verificar si el mensaje es enviado por el usuario actual (you)
-    const char *you_label = (strcmp(sender, nombre_usuario_global) == 0) ? " (you)" : "";
-
-    const char *color_broadcast = "\033[1;33m"; // Amarillo para mensajes de difusión
-    const char *color_private = "\033[1;36m";   // Azul claro para mensajes privados
-    const char *color_you = "\033[1;32m";       // Verde suave para los mensajes de "you"
-    const char *color_reset = "\033[0m";        // Reset de color
+    const char *color_labels = "\033[1;36m";        // celeste
+    const char *color_my_user = "\033[1;32m";       // verde
+    const char *color_other_user = "\033[1;33m";    // amarillo
+    const char *color_message = "\033[1;37m";       // blanco
+    const char *color_private_label = "\033[1;35m"; // rosa
+    const char *color_desconection = "\033[1;31m";  // rojo
+    const char *color_reset = "\033[0m";
 
     if (strcmp(type, "broadcast") == 0)
     {
         // Si es "you", cambiar color
         if (strcmp(sender, nombre_usuario_global) == 0)
         {
-            printf("\n>>> \033[1;34m[YOU] \033[0m\033[1;32m%s\033[0m: \033[1;36m%s\033[0m\n", sender, content);
+            printf("\n%s[BROADCAST] %s%s (YOU)%s: %s%s", color_labels, color_reset, color_my_user, color_reset, color_message, content);
         }
         else
         {
-            printf("\n\033[1;34m[BROADCAST]\033[0m \033[1;32m%s\033[0m: %s\n", sender, content);
+            printf("\n%s[BROADCAST] %s%s%s: %s%s", color_labels, color_reset, color_other_user, sender, color_reset, color_message, content);
         }
     }
     else if (strcmp(type, "private") == 0)
@@ -63,28 +64,28 @@ void mostrar_mensaje_formateado(const char *json)
         // Para mensajes privados con tabulación y colores distintos
         if (strcmp(sender, nombre_usuario_global) == 0)
         {
-            printf("\n\t\033[1;34m[YOU] \033[0m\033[1;35m%s\033[0m: %s\n", sender, content);
+            printf("\n\t%s[PRIVATE] %s%s (YOU)%s: %s%s", color_private_label, color_reset, color_my_user, color_reset, color_message, content);
         }
         else
         {
-            printf("\n\t\033[1;35m[PRIVATE] \033[0m\033[1;32m%s\033[0m: %s\n", sender, content);
+            printf("\n\t%s[PRIVATE] %s%s%s: %s%s", color_private_label, color_reset, color_other_user, sender, color_reset, color_message, content);
         }
     }
     else if (strcmp(type, "list_response") == 0)
     {
-        printf("\n\033[1;36m[USUARIOS CONECTADOS]\033[0m: %s\n", content);
+        printf("\n%s[USUARIOS CONECTADOS]%s: %s%s", color_labels, color_reset, color_message, content);
     }
     else if (strcmp(type, "user_info") == 0)
     {
-        printf("\n\033[1;36m[INFO USUARIO]\033[0m: %s\n", content);
+        printf("\n%s[INFO USUARIO]%s: %s%s", color_labels, color_reset, color_message, content);
     }
     else if (strcmp(type, "change_status") == 0)
     {
-        printf("\n\033[1;33m[ESTADO CAMBIADO]\033[0m \033[1;32m%s\033[0m%s: %s\n", sender, you_label, content);
+        printf("\n%s[ESTADO CAMBIADO]%s %s%s: %s%s", color_desconection, color_reset, color_my_user, sender, color_reset, color_message, content);
     }
     else if (strcmp(type, "disconnect") == 0)
     {
-        printf("\n\033[1;31m[DESCONECTADO]\033[0m \033[1;32m%s\033[0m%s\n", sender, you_label);
+        printf("\n%s[DESCONECTADO]%s %s%s %s%s", color_desconection, color_reset, color_my_user, sender, color_reset, color_message, you_label);
     }
     else if (strcmp(type, "register") == 0)
     {
@@ -93,7 +94,7 @@ void mostrar_mensaje_formateado(const char *json)
     }
     else
     {
-        printf("\n\033[1;37m[OTRO]\033[0m %s\n", json);
+        printf("\n%s[OTRO]%s %s%s", color_reset, color_message, json);
     }
 
     // Asegurar que el cursor se mantenga al final
