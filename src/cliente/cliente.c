@@ -78,7 +78,7 @@ void showFormattedMessage(const char *json)
         // Mostrar el mensaje con timestamp en el formato [BROADCAST - TIMESTAMP]
         if (strcmp(sender, nombre_usuario_global) == 0)
         {
-            printf("\n%s[BROADCAST - %s] %s%s (YOU)%s: %s%s", color_labels, timestamp, color_my_user, sender, color_reset, color_message, content);
+            printf("\n%s[BROADCAST - %s] %s%s (YOU): %s%s%s", color_labels, timestamp, color_my_user, sender, color_reset, color_message, content);
         }
         else
         {
@@ -96,7 +96,7 @@ void showFormattedMessage(const char *json)
         {
             if (strcmp(sender, nombre_usuario_global) == 0)
             {
-                printf("\n\t%s[PRIVATE - %s] %s%s (YOU)%s: %s%s", color_private_label, timestamp, color_my_user, sender, color_reset, color_message, content);
+                printf("\n\t%s[PRIVATE - %s] %s%s (YOU): %s%s%s", color_private_label, timestamp, color_my_user, sender, color_reset, color_message, content);
             }
             else
             {
@@ -108,7 +108,7 @@ void showFormattedMessage(const char *json)
             // Si no hay timestamp, se imprime sin él, como estaba antes
             if (strcmp(sender, nombre_usuario_global) == 0)
             {
-                printf("\n\t%s[PRIVATE] %s%s (YOU)%s: %s%s", color_private_label, color_my_user, sender, color_reset, color_message, content);
+                printf("\n\t%s[PRIVATE] %s%s (YOU): %s%s%s", color_private_label, color_my_user, sender, color_reset, color_message, content);
             }
             else
             {
