@@ -10,6 +10,9 @@ typedef struct
     int isNumber;
 } JsonPair;
 
+/*
+    Elimina espacios entre comillas evitando los espacios dentro de ella para mejor formato en JSON y sin perder el mensaje en el chat
+*/
 void remove_spaces(char *str)
 {
     char *i = str, *j = str;
@@ -125,8 +128,6 @@ char *crearJson_register(const char *nombre_usuario)
 
     return resultado;
 }
-
-// Nuevas funciones crearJson_* para cada tipo de mensaje
 
 char *crearJson_broadcast(const char *sender, const char *mensaje)
 {

@@ -11,7 +11,7 @@ typedef struct
 void remove_spaces(char *str);
 void extract_json(const char *input, char *output);
 int parse_json(const char *json_str, JsonPair *pairs, int max_pairs);
-const char *buscar_valor_por_clave(JsonPair *pares, int cantidad, const char *clave);
+const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave);
 
 // Funciones para crear mensajes JSON
 char *crearJson_register(const char *nombre_usuario);
@@ -22,4 +22,4 @@ char *crearJson_user_info(const char *sender, const char *target);
 char *crearJson_change_status(const char *sender, const char *nuevo_estado);
 char *crearJson_disconnect(const char *sender);
 
-#endif // PARSER_H
+#endif

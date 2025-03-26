@@ -279,7 +279,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
         }
         else if (strcmp(tipo, "broadcast") == 0)
         {
-            const char *mensaje = buscar_valor_por_clave(pares, n, "content");
+            const char *mensaje = getValueByKey(pares, n, "content");
             printf("[BROADCAST] %s: %s\n", sender, mensaje);
 
             pthread_mutex_lock(&mutex);
@@ -305,7 +305,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
 
         else if (strcmp(tipo, "private") == 0)
         {
-            const char *destino = buscar_valor_por_clave(pares, n, "target");
+            const char *destino = getValueByKey(pares, n, "target");
             if (destino)
             {
                 // Verifica si el mensaje ya fue enviado a este destinatario
@@ -323,14 +323,14 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
         }
         else if (strcmp(tipo, "user_info") == 0)
         {
-            const char *target = buscar_valor_por_clave(pares, n, "target");
+            const char *target = getValueByKey(pares, n, "target");
             char *respuesta = crearJson_info_usuario(target);
             send_to_specific_client(sender, respuesta);
             free(respuesta);
         }
         else if (strcmp(tipo, "change_status") == 0)
         {
-            const char *nuevo_estado = buscar_valor_por_clave(pares, n, "content");
+            const char *nuevo_estado = getValueByKey(pares, n, "content");
             actualizar_estado_usuario(sender, nuevo_estado);
         }
         else if (strcmp(tipo, "disconnect") == 0)

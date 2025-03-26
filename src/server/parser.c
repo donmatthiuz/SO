@@ -119,7 +119,7 @@ char *crearJson_register(const char *nombre_usuario)
     return resultado;
 }
 
-const char *buscar_valor_por_clave(JsonPair *pares, int cantidad, const char *clave)
+const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
 {
     for (int i = 0; i < cantidad; i++)
     {
