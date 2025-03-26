@@ -146,39 +146,3 @@ void liberarLista(Usuario *cabeza)
         free(temp);
     }
 }
-
-// int main() {
-//     Usuario* listaUsuarios = NULL;
-
-//     agregarUsuario(&listaUsuarios, "192.168.1.1", ACTIVO, "Alice");
-//     agregarUsuario(&listaUsuarios, "192.168.1.2", OCUPADO, "Bob");
-//     agregarUsuario(&listaUsuarios, "192.168.1.3", INACTIVO, "Charlie");
-
-//     imprimirUsuarios(listaUsuarios);
-
-//     printf("\nActualizando usuario Bob...\n");
-//     actualizarUsuario(listaUsuarios, "Bob", ACTIVO, "192.168.1.4");
-//     imprimirUsuarios(listaUsuarios);
-
-//     printf("\nEliminando usuario Alice...\n");
-//     eliminarUsuario(&listaUsuarios, "Alice");
-//     imprimirUsuarios(listaUsuarios);
-
-//     Usuario* buscado = obtenerUsuario(listaUsuarios, "Charlie");
-//     if (buscado) {
-//         printf("\nUsuario encontrado: IP: %s, Estado: %d, Nombre: %s\n", buscado->ip, buscado->status, buscado->nombre);
-//     }
-
-//     printf("\nObteniendo todos los usuarios...\n");
-//     int cantidad;
-//     Usuario** usuarios = obtenerTodosLosUsuarios(listaUsuarios, &cantidad);
-//     for (int i = 0; i < cantidad; i++) {
-//         printf("Usuario %d -> IP: %s, Estado: %d, Nombre: %s\n", i + 1, usuarios[i]->ip, usuarios[i]->status, usuarios[i]->nombre);
-//     }
-//     free(usuarios);
-
-//     printf("\nLiberando lista de usuarios...\n");
-//     liberarLista(listaUsuarios);
-
-//     return 0;
-// }

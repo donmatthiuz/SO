@@ -12,6 +12,7 @@ void remove_spaces(char *str);
 void extract_json(const char *input, char *output);
 int parse_json(const char *json_str, JsonPair *pairs, int max_pairs);
 const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave);
+char *get_current_timestamp();
 
 // Funciones para crear mensajes JSON
 char *crearJson_register(const char *nombre_usuario);

@@ -70,24 +70,3 @@ void liberar_variables(VariableEntorno *variables, size_t cantidad)
     }
     free(variables);
 }
-
-// int main() {
-//     const char *archivo = ".env";  // Ruta del archivo .env
-//     VariableEntorno *variables = NULL;
-
-//     int cantidad = cargar_variables_entorno(archivo, &variables);
-//     if (cantidad < 0) {
-//         printf("Error al cargar las variables de entorno\n");
-//         return 1;
-//     }
-
-//     // Mostrar las variables de entorno cargadas
-//     for (int i = 0; i < cantidad; i++) {
-//         printf("Variable: %s, Valor: %s\n", variables[i].nombre, variables[i].valor);
-//     }
-
-//     // Liberar la memoria utilizada por las variables
-//     liberar_variables(variables, cantidad);
-
-//     return 0;
-// }

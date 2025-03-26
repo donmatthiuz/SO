@@ -131,13 +131,13 @@ char *crearJson_register(const char *nombre_usuario)
     if (!resultado)
     {
         printf("Error al asignar memoria\n");
-        free(timestamp);
+        free(timestamp); // Liberar timestamp en caso de error
         return NULL;
     }
 
     snprintf(resultado, tamaño, "{\"type\": \"register\", \"sender\": \"%s\", \"content\": null, \"timestamp\": \"%s\"}", nombre_usuario, timestamp);
 
-    free(timestamp);
+    free(timestamp); // Liberar el timestamp después de usarlo
 
     return resultado;
 }
@@ -154,15 +154,16 @@ char *crearJson_broadcast(const char *sender, const char *mensaje)
     char *resultado = (char *)malloc(tamaño);
     if (!resultado)
     {
-        free(timestamp);
+        free(timestamp); // Liberar timestamp en caso de error
         return NULL;
     }
 
+    // Crear el mensaje con el timestamp
     snprintf(resultado, tamaño,
              "{\"type\": \"broadcast\", \"sender\": \"%s\", \"content\": \"%s\", \"timestamp\": \"%s\"}",
              sender, mensaje, timestamp);
 
-    free(timestamp);
+    free(timestamp); // Liberar el timestamp después de usarlo
 
     return resultado;
 }
@@ -186,27 +187,29 @@ char *crearJson_private(const char *sender, const char *target, const char *mens
              "{\"type\": \"private\", \"sender\": \"%s\", \"target\": \"%s\", \"content\": \"%s\", \"timestamp\": \"%s\"}",
              sender, target, mensaje, timestamp);
 
-    free(timestamp);
+    free(timestamp); // Liberar el timestamp después de usarlo
 
     return resultado;
 }
 
 char *crearJson_list_users(const char *sender)
 {
+    char *timestamp = get_current_timestamp();
     int tamaño = snprintf(NULL, 0,
-                          "{\"type\": \"list_users\", \"sender\": \"%s\"}",
-                          sender) +
+                          "{\"type\": \"list_users\", \"sender\": \"%s\", \"timestamp\": \"%s\"}",
+                          sender, timestamp) +
                  1;
 
     char *resultado = (char *)malloc(tamaño);
     if (!resultado)
     {
+        free(timestamp); // Liberar timestamp en caso de error
         return NULL;
     }
 
-    snprintf(resultado, tamaño,
-             "{\"type\": \"list_users\", \"sender\": \"%s\"}",
-             sender);
+    snprintf(resultado, tamaño, "{\"type\": \"list_users\", \"sender\": \"%s\", \"timestamp\": \"%s\"}", sender, timestamp);
+
+    free(timestamp); // Liberar el timestamp después de usarlo
 
     return resultado;
 }
@@ -246,7 +249,7 @@ char *crearJson_change_status(const char *sender, const char *nuevo_estado)
     char *resultado = (char *)malloc(tamaño);
     if (!resultado)
     {
-        free(timestamp);
+        free(timestamp); // Liberar timestamp en caso de error
         return NULL;
     }
 
@@ -254,7 +257,7 @@ char *crearJson_change_status(const char *sender, const char *nuevo_estado)
              "{\"type\": \"change_status\", \"sender\": \"%s\", \"content\": \"%s\", \"timestamp\": \"%s\"}",
              sender, nuevo_estado, timestamp);
 
-    free(timestamp);
+    free(timestamp); // Liberar el timestamp después de usarlo
 
     return resultado;
 }
@@ -270,7 +273,7 @@ char *crearJson_disconnect(const char *sender)
     char *resultado = (char *)malloc(tamaño);
     if (!resultado)
     {
-        free(timestamp);
+        free(timestamp); // Liberar timestamp en caso de error
         return NULL;
     }
 
@@ -278,7 +281,7 @@ char *crearJson_disconnect(const char *sender)
              "{\"type\": \"disconnect\", \"sender\": \"%s\", \"content\": \"Cierre de sesión\", \"timestamp\": \"%s\"}",
              sender, timestamp);
 
-    free(timestamp);
+    free(timestamp); // Liberar el timestamp después de usarlo
 
     return resultado;
 }
