@@ -9,6 +9,7 @@
 #include "parser.h"
 
 #define MAX_CLIENTS 100
+#define MAX_USUARIOS 100
 
 typedef struct
 {
@@ -18,13 +19,23 @@ typedef struct
     int status; // 0 = ACTIVO, 1 = OCUPADO, 2 = INACTIVO
     int activo;
 } UsuarioRegistrado;
-
-#define MAX_USUARIOS 100
 UsuarioRegistrado usuarios[MAX_USUARIOS];
-
 volatile int force_exit = 0;
 pthread_mutex_t mutex;
-
+const char *estado_to_string(int status)
+{
+    switch (status)
+    {
+    case 0:
+        return "ACTIVO";
+    case 1:
+        return "OCUPADO";
+    case 2:
+        return "INACTIVO";
+    default:
+        return "DESCONOCIDO";
+    }
+}
 struct per_session_data
 {
     char client_id[50];
@@ -34,6 +45,15 @@ struct per_session_data
 };
 
 struct per_session_data clients[MAX_CLIENTS];
+
+char *get_current_timestamp()
+{
+    time_t now = time(NULL);
+    struct tm *t = localtime(&now);
+    char *buf = malloc(32);
+    strftime(buf, 32, "%Y-%m-%d %H:%M:%S", t);
+    return buf;
+}
 
 void registrar_usuario(const char *nombre, const char *ip, struct lws *wsi)
 {
@@ -108,18 +128,19 @@ void *client_thread(void *arg)
     return NULL;
 }
 
-const char *estado_to_string(int status)
+void actualizar_estado_usuario(const char *nombre, const char *nuevo_estado)
 {
-    switch (status)
+    for (int i = 0; i < MAX_USUARIOS; i++)
     {
-    case 0:
-        return "ACTIVO";
-    case 1:
-        return "OCUPADO";
-    case 2:
-        return "INACTIVO";
-    default:
-        return "DESCONOCIDO";
+        if (usuarios[i].activo && strcmp(usuarios[i].nombre, nombre) == 0)
+        {
+            if (strcmp(nuevo_estado, "OCUPADO") == 0)
+                usuarios[i].status = 1;
+            else if (strcmp(nuevo_estado, "INACTIVO") == 0)
+                usuarios[i].status = 2;
+            else
+                usuarios[i].status = 0;
+        }
     }
 }
 
@@ -137,22 +158,6 @@ char *crearJson_info_usuario(const char *nombre)
         }
     }
     return strdup("{\"type\":\"info_response\",\"error\":\"Usuario no encontrado\"}");
-}
-
-void actualizar_estado_usuario(const char *nombre, const char *nuevo_estado)
-{
-    for (int i = 0; i < MAX_USUARIOS; i++)
-    {
-        if (usuarios[i].activo && strcmp(usuarios[i].nombre, nombre) == 0)
-        {
-            if (strcmp(nuevo_estado, "OCUPADO") == 0)
-                usuarios[i].status = 1;
-            else if (strcmp(nuevo_estado, "INACTIVO") == 0)
-                usuarios[i].status = 2;
-            else
-                usuarios[i].status = 0;
-        }
-    }
 }
 
 char *crearJson_lista_usuarios()
@@ -175,15 +180,6 @@ char *crearJson_lista_usuarios()
 
     strcat(buffer, "]}");
     return strdup(buffer);
-}
-
-char *get_current_timestamp()
-{
-    time_t now = time(NULL);
-    struct tm *t = localtime(&now);
-    char *buf = malloc(32);
-    strftime(buf, 32, "%Y-%m-%d %H:%M:%S", t);
-    return buf;
 }
 
 static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
