@@ -13,9 +13,16 @@ typedef struct
 void remove_spaces(char *str)
 {
     char *i = str, *j = str;
+    int in_string = 0;
+
     while (*i != '\0')
     {
-        if (!isspace((unsigned char)*i))
+        if (*i == '"')
+        {
+            in_string = !in_string; // Alterna si está dentro de comillas
+        }
+
+        if (in_string || !isspace((unsigned char)*i))
         {
             *j++ = *i;
         }
