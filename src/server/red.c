@@ -5,7 +5,6 @@
 #include <pthread.h>
 #include <signal.h>
 #include <unistd.h>
-#include <time.h>
 #include "parser.h"
 
 #define MAX_CLIENTS 100
@@ -36,15 +35,6 @@ const char *estado_to_string(int status)
         return "DESCONOCIDO";
     }
 }
-struct per_session_data
-{
-    char client_id[50];
-    char client_ip[50];
-    struct lws *wsi;
-    int is_active;
-};
-
-struct per_session_data clients[MAX_CLIENTS];
 
 char *get_current_timestamp()
 {
@@ -54,6 +44,15 @@ char *get_current_timestamp()
     strftime(buf, 32, "%Y-%m-%d %H:%M:%S", t);
     return buf;
 }
+struct per_session_data
+{
+    char client_id[50];
+    char client_ip[50];
+    struct lws *wsi;
+    int is_active;
+};
+
+struct per_session_data clients[MAX_CLIENTS];
 
 void registrar_usuario(const char *nombre, const char *ip, struct lws *wsi)
 {
@@ -160,11 +159,13 @@ char *crearJson_info_usuario(const char *nombre)
     return strdup("{\"type\":\"info_response\",\"error\":\"Usuario no encontrado\"}");
 }
 
-char *crearJson_lista_usuarios()
+char *crearJson_lista_usuarios(const char *timestamp)
 {
-    char buffer[1024] = "{\"type\":\"list_response\",\"users\":[";
-    int first = 1;
+    // Crear la parte inicial del mensaje
+    char buffer[1024] = "{\"type\":\"list_users_response\",\"sender\":\"server\",\"content\":[";
 
+    int first = 1;
+    // Recorrer la lista de usuarios y agregarlos al contenido
     for (int i = 0; i < MAX_USUARIOS; i++)
     {
         if (usuarios[i].activo)
@@ -178,13 +179,19 @@ char *crearJson_lista_usuarios()
         }
     }
 
-    strcat(buffer, "]}");
+    // Agregar el timestamp
+    strcat(buffer, "],\"timestamp\":\"");
+    strcat(buffer, timestamp);
+    strcat(buffer, "\"}");
+
+    // Retornar el JSON creado
     return strdup(buffer);
 }
 
 static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
                          void *user, void *in, size_t len)
 {
+    static char last_sender[50] = "";
     struct per_session_data *pss = (struct per_session_data *)user;
 
     switch (reason)
@@ -313,10 +320,22 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
         else if (strcmp(tipo, "list_users") == 0)
         {
             printf("[LISTA] %s pidió la lista de usuarios\n", sender);
-            char *respuesta = crearJson_lista_usuarios();
-            send_to_specific_client(sender, respuesta);
+            char *timestamp = get_current_timestamp();
+
+            // Crear el JSON de respuesta
+            char *respuesta = crearJson_lista_usuarios(timestamp);
+
+            // Enviar solo la respuesta una vez
+            if (strcmp(sender, last_sender) != 0)
+            {
+                send_to_specific_client(sender, respuesta);
+                strncpy(last_sender, sender, sizeof(last_sender)); // Actualiza el último remitente
+            }
+
             free(respuesta);
+            free(timestamp);
         }
+
         else if (strcmp(tipo, "user_info") == 0)
         {
             const char *target = getValueByKey(pares, n, "target");

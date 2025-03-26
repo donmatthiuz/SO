@@ -15,6 +15,7 @@
 
 static int connection_open = 0;
 static char nombre_usuario_global[50] = "";
+int list_users_sent = 0;
 
 const char *color_info = "\033[1;36m";
 const char *color_wait = "\033[1;33m";
@@ -50,10 +51,22 @@ const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
 */
 void showFormattedMessage(const char *json)
 {
+    // Imprimir el JSON recibido para comprobar lo que llega
+    printf("\n[DEBUG] Mensaje recibido: %s\n", json);
+
     JsonPair pares[10];
     int n = parse_json(json, pares, 10);
 
+    // Imprimir todas las claves y valores extraídos
+    printf("[DEBUG] Total de pares extraídos: %d\n", n);
+    for (int i = 0; i < n; i++)
+    {
+        printf("[DEBUG] Par %d: %s: %s\n", i, pares[i].key, pares[i].value);
+    }
+
+    // Obtener el tipo de mensaje
     const char *type = getValueByKey(pares, n, "type");
+    printf("[DEBUG] Tipo recibido: '%s'\n", type); // Mostrar 'type' recibido
     const char *sender = getValueByKey(pares, n, "sender");
     const char *content = getValueByKey(pares, n, "content");
     const char *timestamp = getValueByKey(pares, n, "timestamp");
@@ -74,31 +87,84 @@ void showFormattedMessage(const char *json)
 
     if (strcmp(type, "broadcast") == 0)
     {
-        if (strcmp(sender, nombre_usuario_global) == 0)
+        if (timestamp && strcmp(timestamp, "") != 0) // Asegurarse de que el timestamp no esté vacío
         {
-            printf("\n%s[BROADCAST] %s%s (YOU)%s: %s%s", color_labels, color_my_user, sender, color_reset, color_message, content);
+            if (strcmp(sender, nombre_usuario_global) == 0)
+            {
+                printf("\n%s[BROADCAST - %s] %s%s (YOU)%s: %s%s", color_labels, timestamp, color_my_user, sender, color_reset, color_message, content);
+            }
+            else
+            {
+                printf("\n%s[BROADCAST - %s] %s%s: %s%s", color_labels, timestamp, color_other_user, sender, color_message, content);
+            }
         }
         else
         {
-            printf("\n%s[BROADCAST] %s%s: %s%s", color_labels, color_other_user, sender, color_reset, content);
+            if (strcmp(sender, nombre_usuario_global) == 0)
+            {
+                printf("\n%s[BROADCAST] %s%s (YOU)%s: %s%s", color_labels, color_my_user, sender, color_reset, color_message, content);
+            }
+            else
+            {
+                printf("\n%s[BROADCAST] %s%s: %s%s", color_labels, color_other_user, sender, color_message, content);
+            }
         }
     }
 
     else if (strcmp(type, "private") == 0)
     {
-        if (strcmp(sender, nombre_usuario_global) == 0)
+        const char *timestamp = getValueByKey(pares, n, "timestamp"); // Obtener el timestamp del mensaje privado
+
+        if (timestamp && strcmp(timestamp, "") != 0) // Asegurarse de que el timestamp no esté vacío
         {
-            printf("\n\t%s[PRIVATE] %s%s (YOU)%s: %s%s", color_private_label, color_my_user, sender, color_reset, color_message, content);
+            if (strcmp(sender, nombre_usuario_global) == 0)
+            {
+                printf("\n\t%s[PRIVATE - %s] %s%s (YOU)%s: %s%s", color_private_label, timestamp, color_my_user, sender, color_reset, color_message, content);
+            }
+            else
+            {
+                printf("\n\t%s[PRIVATE - %s] %s%s: %s%s", color_private_label, timestamp, color_other_user, sender, color_message, content);
+            }
         }
         else
         {
-            printf("\n\t%s[PRIVATE] %s%s: %s%s", color_private_label, color_other_user, sender, color_reset, content);
+            // Si no hay timestamp, se imprime sin él, como estaba antes
+            if (strcmp(sender, nombre_usuario_global) == 0)
+            {
+                printf("\n\t%s[PRIVATE] %s%s (YOU)%s: %s%s", color_private_label, color_my_user, sender, color_reset, color_message, content);
+            }
+            else
+            {
+                printf("\n\t%s[PRIVATE] %s%s: %s%s", color_private_label, color_other_user, sender, color_message, content);
+            }
         }
     }
-    else if (strcmp(type, "list_response") == 0)
+
+    else if (strcmp(type, "list_users_response") == 0)
     {
-        printf("\n%s[USUARIOS CONECTADOS]%s: %s%s", color_labels, color_reset, color_message, content);
+        printf("\n%s[USUARIOS CONECTADOS]%s:", color_labels, color_reset);
+
+        // Crear una copia de 'content' para manipularla
+        char *users = strdup(content); // Crea una copia de 'content'
+        if (users == NULL)
+        {
+            printf("[ERROR] No se pudo hacer una copia de content\n");
+            return;
+        }
+
+        // Eliminar los corchetes y dividir la lista por comas
+        users[strlen(users) - 1] = '\0';
+        char *user = strtok(users + 1, ","); // Comienza después del primer corchete
+
+        while (user != NULL)
+        {
+            printf("\n\t%s- %s%s", color_message, user, color_reset);
+            user = strtok(NULL, ","); // Obtener el siguiente usuario
+        }
+
+        free(users);
     }
+
     else if (strcmp(type, "user_info") == 0)
     {
         printf("\n%s[INFO USUARIO]%s: %s%s", color_labels, color_reset, color_message, content);
@@ -113,7 +179,7 @@ void showFormattedMessage(const char *json)
     }
     else
     {
-        printf("\n%s[OTRO]%s %s", color_reset, color_message, json);
+        // printf("\n%s[OTRO]%s %s", color_reset, color_message, json);
     }
 
     printf("\n\n\t%s> ", color_input);
@@ -215,7 +281,11 @@ void *leer_mensajes(void *arg)
             }
             else if (strncmp(user_input, "/list", 5) == 0)
             {
-                json = crearJson_list_users(nombre_usuario_global);
+                if (!list_users_sent) // Asegúrate de que esta bandera sea controlada
+                {
+                    json = crearJson_list_users(nombre_usuario_global);
+                    list_users_sent = 1; // Marca como enviado
+                }
             }
             else if (strncmp(user_input, "/info ", 6) == 0)
             {
