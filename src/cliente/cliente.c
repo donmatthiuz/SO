@@ -47,28 +47,42 @@ void mostrar_mensaje_formateado(const char *json)
     const char *color_desconection = "\033[1;31m";  // rojo
     const char *color_reset = "\033[0m";
 
+    // Mensaje de "registro" (cuando un nuevo usuario se une)
+    if (strcmp(type, "register") == 0)
+    {
+        if (strcmp(sender, nombre_usuario_global) == 0)
+        {
+            printf("\n%s[USUARIO NUEVO]%s %s%s te has unido al chat.%s\n", color_labels, color_reset, color_my_user, sender, color_reset);
+        }
+        else
+        {
+            printf("\n%s[USUARIO NUEVO]%s %s%s se ha unido al chat.%s\n", color_labels, color_reset, color_other_user, sender, color_reset);
+        }
+        return;
+    }
+
+    // Mostrar mensajes de tipo broadcast
     if (strcmp(type, "broadcast") == 0)
     {
-        // Si es "you", cambiar color
         if (strcmp(sender, nombre_usuario_global) == 0)
         {
-            printf("\n%s[BROADCAST] %s%s (YOU)%s: %s%s", color_labels, color_reset, color_my_user, color_reset, color_message, content);
+            printf("\n%s[BROADCAST] %s%s (YOU)%s: %s%s", color_labels, color_my_user, sender, color_reset, color_message, content);
         }
         else
         {
-            printf("\n%s[BROADCAST] %s%s%s: %s%s", color_labels, color_reset, color_other_user, sender, color_reset, color_message, content);
+            printf("\n%s[BROADCAST] %s%s: %s%s", color_labels, color_other_user, sender, color_reset, content);
         }
     }
+    // Mostrar mensajes privados
     else if (strcmp(type, "private") == 0)
     {
-        // Para mensajes privados con tabulación y colores distintos
         if (strcmp(sender, nombre_usuario_global) == 0)
         {
-            printf("\n\t%s[PRIVATE] %s%s (YOU)%s: %s%s", color_private_label, color_reset, color_my_user, color_reset, color_message, content);
+            printf("\n\t%s[PRIVATE] %s%s (YOU)%s: %s%s", color_private_label, color_my_user, sender, color_reset, color_message, content);
         }
         else
         {
-            printf("\n\t%s[PRIVATE] %s%s%s: %s%s", color_private_label, color_reset, color_other_user, sender, color_reset, color_message, content);
+            printf("\n\t%s[PRIVATE] %s%s: %s%s", color_private_label, color_other_user, sender, color_reset, content);
         }
     }
     else if (strcmp(type, "list_response") == 0)
@@ -81,24 +95,19 @@ void mostrar_mensaje_formateado(const char *json)
     }
     else if (strcmp(type, "change_status") == 0)
     {
-        printf("\n%s[ESTADO CAMBIADO]%s %s%s: %s%s", color_desconection, color_reset, color_my_user, sender, color_reset, color_message, content);
+        printf("\n%s[ESTADO CAMBIADO]%s %s%s: %s", color_desconection, color_reset, color_my_user, sender, content);
     }
     else if (strcmp(type, "disconnect") == 0)
     {
-        printf("\n%s[DESCONECTADO]%s %s%s %s%s", color_desconection, color_reset, color_my_user, sender, color_reset, color_message, you_label);
-    }
-    else if (strcmp(type, "register") == 0)
-    {
-        // Ignorar mensaje de registro
-        return;
+        printf("\n%s[DESCONECTADO]%s %s%s %s", color_desconection, color_reset, color_my_user, sender, you_label);
     }
     else
     {
-        printf("\n%s[OTRO]%s %s%s", color_reset, color_message, json);
+        printf("\n%s[OTRO]%s %s", color_reset, color_message, json); // Asegúrate de que json sea un char*
     }
 
-    // Asegurar que el cursor se mantenga al final
-    printf("> ");
+    // Mover el cursor a la siguiente línea
+    printf("\n> ");
     fflush(stdout);
 }
 
