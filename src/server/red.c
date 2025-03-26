@@ -5,8 +5,22 @@
 #include <pthread.h>
 #include <signal.h>
 #include <unistd.h>
+#include <time.h>
+#include "parser.h"
 
 #define MAX_CLIENTS 100
+
+typedef struct
+{
+    char nombre[50];
+    char ip[50];
+    struct lws *wsi;
+    int status; // 0 = ACTIVO, 1 = OCUPADO, 2 = INACTIVO
+    int activo;
+} UsuarioRegistrado;
+
+#define MAX_USUARIOS 100
+UsuarioRegistrado usuarios[MAX_USUARIOS];
 
 volatile int force_exit = 0;
 pthread_mutex_t mutex;
@@ -21,59 +35,64 @@ struct per_session_data
 
 struct per_session_data clients[MAX_CLIENTS];
 
-// Added sighandler function
+void registrar_usuario(const char *nombre, const char *ip, struct lws *wsi)
+{
+    for (int i = 0; i < MAX_USUARIOS; i++)
+    {
+        if (!usuarios[i].activo)
+        {
+            strncpy(usuarios[i].nombre, nombre, sizeof(usuarios[i].nombre));
+            strncpy(usuarios[i].ip, ip, sizeof(usuarios[i].ip));
+            usuarios[i].wsi = wsi;
+            usuarios[i].status = 0;
+            usuarios[i].activo = 1;
+            printf("[INFO] Usuario registrado: %s (%s)\n", nombre, ip);
+            return;
+        }
+    }
+    printf("[ERROR] No hay espacio para más usuarios.\n");
+}
+
 void sighandler(int sig)
 {
     force_exit = 1;
 }
 
-void send_to_specific_client(const char *target_id, const char *message)
+void send_to_specific_client(const char *target_name, const char *message)
 {
-    for (int i = 0; i < MAX_CLIENTS; i++)
+    for (int i = 0; i < MAX_USUARIOS; i++)
     {
-        if (clients[i].is_active &&
-            strcmp(clients[i].client_id, target_id) == 0)
+        if (usuarios[i].activo && strcmp(usuarios[i].nombre, target_name) == 0)
         {
-
             int message_len = strlen(message);
             unsigned char *buf = malloc(LWS_PRE + message_len);
             if (!buf)
             {
                 printf("Memory allocation error\n");
-                pthread_mutex_unlock(&mutex);
                 return;
             }
 
             memcpy(buf + LWS_PRE, message, message_len);
-            printf("Enviando mensaje al cliente %s \n", message);
-            lws_write(clients[i].wsi, buf + LWS_PRE, message_len, LWS_WRITE_TEXT);
+            printf("[INFO] Enviando mensaje a %s: %s\n", target_name, message);
+            lws_write(usuarios[i].wsi, buf + LWS_PRE, message_len, LWS_WRITE_TEXT);
 
             free(buf);
-            break;
-        }
-        else
-        {
-            printf("Cliente no encontrado\n");
+            return;
         }
     }
+    printf("[WARN] Cliente '%s' no encontrado\n", target_name);
 }
 
-// Esta función se ejecutará en el hilo de cada cliente
 void *client_thread(void *arg)
 {
     struct per_session_data *pss = (struct per_session_data *)arg;
-
-    // Aquí puedes realizar la comunicación con el cliente, recibir y enviar mensajes
     printf("Manejando cliente: %s\n", pss->client_id);
 
-    // Ejemplo de mantener el hilo en ejecución mientras el cliente está activo
     while (pss->is_active)
     {
-        // Este bucle simula la espera de nuevos mensajes o el cierre de conexión
-        usleep(1000); // Espera 1ms para evitar un bucle ocupado
+        usleep(1000);
     }
 
-    // Cuando se termina de manejar la conexión, marcarlo como inactivo
     pthread_mutex_lock(&mutex);
     for (int i = 0; i < MAX_CLIENTS; i++)
     {
@@ -89,6 +108,84 @@ void *client_thread(void *arg)
     return NULL;
 }
 
+const char *estado_to_string(int status)
+{
+    switch (status)
+    {
+    case 0:
+        return "ACTIVO";
+    case 1:
+        return "OCUPADO";
+    case 2:
+        return "INACTIVO";
+    default:
+        return "DESCONOCIDO";
+    }
+}
+
+char *crearJson_info_usuario(const char *nombre)
+{
+    for (int i = 0; i < MAX_USUARIOS; i++)
+    {
+        if (usuarios[i].activo && strcmp(usuarios[i].nombre, nombre) == 0)
+        {
+            char buffer[256];
+            snprintf(buffer, sizeof(buffer),
+                     "{\"type\":\"info_response\",\"name\":\"%s\",\"ip\":\"%s\",\"status\":\"%s\"}",
+                     usuarios[i].nombre, usuarios[i].ip, estado_to_string(usuarios[i].status));
+            return strdup(buffer);
+        }
+    }
+    return strdup("{\"type\":\"info_response\",\"error\":\"Usuario no encontrado\"}");
+}
+
+void actualizar_estado_usuario(const char *nombre, const char *nuevo_estado)
+{
+    for (int i = 0; i < MAX_USUARIOS; i++)
+    {
+        if (usuarios[i].activo && strcmp(usuarios[i].nombre, nombre) == 0)
+        {
+            if (strcmp(nuevo_estado, "OCUPADO") == 0)
+                usuarios[i].status = 1;
+            else if (strcmp(nuevo_estado, "INACTIVO") == 0)
+                usuarios[i].status = 2;
+            else
+                usuarios[i].status = 0;
+        }
+    }
+}
+
+char *crearJson_lista_usuarios()
+{
+    char buffer[1024] = "{\"type\":\"list_response\",\"users\":[";
+    int first = 1;
+
+    for (int i = 0; i < MAX_USUARIOS; i++)
+    {
+        if (usuarios[i].activo)
+        {
+            if (!first)
+                strcat(buffer, ",");
+            char temp[100];
+            snprintf(temp, sizeof(temp), "\"%s\"", usuarios[i].nombre);
+            strcat(buffer, temp);
+            first = 0;
+        }
+    }
+
+    strcat(buffer, "]}");
+    return strdup(buffer);
+}
+
+char *get_current_timestamp()
+{
+    time_t now = time(NULL);
+    struct tm *t = localtime(&now);
+    char *buf = malloc(32);
+    strftime(buf, 32, "%Y-%m-%d %H:%M:%S", t);
+    return buf;
+}
+
 static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
                          void *user, void *in, size_t len)
 {
@@ -100,12 +197,10 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
     {
         lws_get_peer_simple(wsi, pss->client_ip, sizeof(pss->client_ip));
         snprintf(pss->client_id, sizeof(pss->client_id) - 1, "user_%.40s", pss->client_ip);
-        pss->client_id[sizeof(pss->client_id) - 1] = '\0'; // asegurar null terminator
-
+        pss->client_id[sizeof(pss->client_id) - 1] = '\0';
         pss->wsi = wsi;
         pss->is_active = 1;
 
-        // Asignar el cliente al array
         pthread_mutex_lock(&mutex);
         for (int i = 0; i < MAX_CLIENTS; i++)
         {
@@ -117,18 +212,16 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
         }
         pthread_mutex_unlock(&mutex);
 
-        printf("Cliente conectado: %s\n", pss->client_id);
+        printf("\033[1;32m[+] Cliente conectado: %s\033[0m\n", pss->client_id);
 
-        // Crear un hilo para manejar la comunicación con este cliente
         pthread_t thread;
         if (pthread_create(&thread, NULL, client_thread, pss) != 0)
         {
-            printf("Error creando el hilo para el cliente %s\n", pss->client_id);
+            printf("[ERROR] Hilo no creado para cliente %s\n", pss->client_id);
         }
         else
         {
-            // Ya no necesitamos mantener el hilo activo, podemos detallar el thread después
-            pthread_detach(thread); // Si no vamos a esperar al hilo
+            pthread_detach(thread);
         }
         break;
     }
@@ -139,16 +232,93 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
         memcpy(message, in, len);
         message[len] = '\0';
 
+        char json_extraido[256];
+        extract_json(message, json_extraido);
+
+        JsonPair pares[10];
+        int n = parse_json(json_extraido, pares, 10);
+
+        char tipo[50] = "";
+        char sender[50] = "";
+
+        for (int i = 0; i < n; i++)
+        {
+            if (strcmp(pares[i].key, "type") == 0)
+                strncpy(tipo, pares[i].value, sizeof(tipo));
+            else if (strcmp(pares[i].key, "sender") == 0)
+                strncpy(sender, pares[i].value, sizeof(sender));
+        }
+
+        if (strcmp(tipo, "register") == 0)
+        {
+            registrar_usuario(sender, pss->client_ip, wsi);
+        }
+        else if (strcmp(tipo, "broadcast") == 0)
+        {
+            const char *mensaje = buscar_valor_por_clave(pares, n, "content");
+            printf("[BROADCAST] %s: %s\n", sender, mensaje);
+
+            pthread_mutex_lock(&mutex);
+            for (int i = 0; i < MAX_USUARIOS; i++)
+            {
+                if (usuarios[i].activo)
+                {
+                    int len_msg = strlen(message);
+                    unsigned char *buf = malloc(LWS_PRE + len_msg);
+                    if (!buf)
+                    {
+                        printf("[ERROR] Memoria insuficiente para broadcast\n");
+                        continue;
+                    }
+                    memcpy(buf + LWS_PRE, message, len_msg);
+                    lws_write(usuarios[i].wsi, buf + LWS_PRE, len_msg, LWS_WRITE_TEXT);
+                    free(buf);
+                    printf("[INFO] Mensaje broadcast enviado a %s\n", usuarios[i].nombre);
+                }
+            }
+            pthread_mutex_unlock(&mutex);
+        }
+        else if (strcmp(tipo, "private") == 0)
+        {
+            const char *destino = buscar_valor_por_clave(pares, n, "target");
+            if (destino)
+                send_to_specific_client(destino, message);
+        }
+        else if (strcmp(tipo, "list_users") == 0)
+        {
+            printf("[LISTA] %s pidió la lista de usuarios\n", sender);
+            char *respuesta = crearJson_lista_usuarios();
+            send_to_specific_client(sender, respuesta);
+            free(respuesta);
+        }
+        else if (strcmp(tipo, "user_info") == 0)
+        {
+            const char *target = buscar_valor_por_clave(pares, n, "target");
+            char *respuesta = crearJson_info_usuario(target);
+            send_to_specific_client(sender, respuesta);
+            free(respuesta);
+        }
+        else if (strcmp(tipo, "change_status") == 0)
+        {
+            const char *nuevo_estado = buscar_valor_por_clave(pares, n, "content");
+            actualizar_estado_usuario(sender, nuevo_estado);
+        }
+        else if (strcmp(tipo, "disconnect") == 0)
+        {
+            printf("[DESCONECTAR] %s cerró sesión\n", sender);
+            lws_close_reason(wsi, LWS_CLOSE_STATUS_NORMAL, NULL, 0);
+            lws_callback_on_writable(wsi);
+        }
+
         pthread_mutex_lock(&mutex);
-        printf("Mensaje de %s: %s\n", pss->client_ip, message);
-        send_to_specific_client("user_127.0.0.1", pss->client_id);
+        printf("\033[1;34m[Mensaje] de %s:\033[0m %s\n", pss->client_ip, message);
+        send_to_specific_client(sender, message);
         pthread_mutex_unlock(&mutex);
         break;
     }
 
     case LWS_CALLBACK_CLOSED:
     {
-        // Indicar que el cliente está inactivo
         pthread_mutex_lock(&mutex);
         for (int i = 0; i < MAX_CLIENTS; i++)
         {
@@ -159,8 +329,8 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             }
         }
         pthread_mutex_unlock(&mutex);
-        printf("Cliente desconectado: %s\n", pss->client_id);
-        pss->is_active = 0; // Marcar como inactivo para que el hilo termine
+        printf("\033[1;31m[-] Cliente desconectado: %s\033[0m\n", pss->client_id);
+        pss->is_active = 0;
         break;
     }
 
@@ -190,26 +360,26 @@ int main()
 
     if (pthread_mutex_init(&mutex, NULL) != 0)
     {
-        printf("Error inicializando el mutex\n");
+        printf("[ERROR] Mutex no inicializado\n");
         return -1;
     }
 
     context = lws_create_context(&info);
     if (!context)
     {
-        printf("Error creando el contexto WebSocket\n");
+        printf("[ERROR] Contexto WebSocket no creado\n");
         pthread_mutex_destroy(&mutex);
         return -1;
     }
 
-    printf("Servidor WebSocket en ws://localhost:5000/\n");
+    printf("\n\033[1;36mServidor WebSocket en ws://localhost:5000/\033[0m\n\n");
 
     while (!force_exit)
     {
         lws_service(context, 50);
     }
 
-    printf("Cerrando servidor...\n");
+    printf("\033[1;33m[!] Cerrando servidor...\033[0m\n");
     pthread_mutex_destroy(&mutex);
     lws_context_destroy(context);
     return 0;
