@@ -38,13 +38,37 @@ void mostrar_mensaje_formateado(const char *json)
     const char *content = buscar_valor_por_clave(pares, n, "content");
     const char *timestamp = buscar_valor_por_clave(pares, n, "timestamp");
 
+    // Verificar si el mensaje es enviado por el usuario actual (you)
+    const char *you_label = (strcmp(sender, nombre_usuario_global) == 0) ? " (you)" : "";
+
+    const char *color_broadcast = "\033[1;33m"; // Amarillo para mensajes de difusión
+    const char *color_private = "\033[1;36m";   // Azul claro para mensajes privados
+    const char *color_you = "\033[1;32m";       // Verde suave para los mensajes de "you"
+    const char *color_reset = "\033[0m";        // Reset de color
+
     if (strcmp(type, "broadcast") == 0)
     {
-        printf("\n\033[1;34m[BROADCAST]\033[0m \033[1;32m%s\033[0m: %s\n", sender, content);
+        // Si es "you", cambiar color
+        if (strcmp(sender, nombre_usuario_global) == 0)
+        {
+            printf("\n>>> \033[1;34m[YOU] \033[0m\033[1;32m%s\033[0m: \033[1;36m%s\033[0m\n", sender, content);
+        }
+        else
+        {
+            printf("\n\033[1;34m[BROADCAST]\033[0m \033[1;32m%s\033[0m: %s\n", sender, content);
+        }
     }
     else if (strcmp(type, "private") == 0)
     {
-        printf("\t\n\033[1;35m[PRIVADO]\033[0m \033[1;32m%s\033[0m: %s\n", sender, content);
+        // Para mensajes privados con tabulación y colores distintos
+        if (strcmp(sender, nombre_usuario_global) == 0)
+        {
+            printf("\n\t\033[1;34m[YOU] \033[0m\033[1;35m%s\033[0m: %s\n", sender, content);
+        }
+        else
+        {
+            printf("\n\t\033[1;35m[PRIVATE] \033[0m\033[1;32m%s\033[0m: %s\n", sender, content);
+        }
     }
     else if (strcmp(type, "list_response") == 0)
     {
@@ -56,17 +80,23 @@ void mostrar_mensaje_formateado(const char *json)
     }
     else if (strcmp(type, "change_status") == 0)
     {
-        printf("\n\033[1;33m[ESTADO CAMBIADO]\033[0m \033[1;32m%s\033[0m: %s\n", sender, content);
+        printf("\n\033[1;33m[ESTADO CAMBIADO]\033[0m \033[1;32m%s\033[0m%s: %s\n", sender, you_label, content);
     }
     else if (strcmp(type, "disconnect") == 0)
     {
-        printf("\n\033[1;31m[DESCONECTADO]\033[0m \033[1;32m%s\033[0m\n", sender);
+        printf("\n\033[1;31m[DESCONECTADO]\033[0m \033[1;32m%s\033[0m%s\n", sender, you_label);
+    }
+    else if (strcmp(type, "register") == 0)
+    {
+        // Ignorar mensaje de registro
+        return;
     }
     else
     {
         printf("\n\033[1;37m[OTRO]\033[0m %s\n", json);
     }
 
+    // Asegurar que el cursor se mantenga al final
     printf("> ");
     fflush(stdout);
 }
