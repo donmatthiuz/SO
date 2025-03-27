@@ -216,24 +216,20 @@ char *crearJson_list_users(const char *sender)
 
 char *crearJson_user_info(const char *sender, const char *target)
 {
-    char *timestamp = get_current_timestamp();
     int tamaño = snprintf(NULL, 0,
-                          "{\"type\": \"user_info\", \"sender\": \"%s\", \"target\": \"%s\", \"timestamp\": \"%s\"}",
-                          sender, target, timestamp) +
+                          "{\"type\": \"user_info\", \"sender\": \"%s\", \"target\": \"%s\"}",
+                          sender, target) +
                  1;
 
     char *resultado = (char *)malloc(tamaño);
     if (!resultado)
     {
-        free(timestamp); // Liberar timestamp en caso de error
         return NULL;
     }
 
     snprintf(resultado, tamaño,
-             "{\"type\": \"user_info\", \"sender\": \"%s\", \"target\": \"%s\", \"timestamp\": \"%s\"}",
-             sender, target, timestamp);
-
-    free(timestamp); // Liberar el timestamp después de usarlo
+             "{\"type\": \"user_info\", \"sender\": \"%s\", \"target\": \"%s\"}",
+             sender, target);
 
     return resultado;
 }

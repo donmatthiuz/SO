@@ -71,6 +71,7 @@ void showFormattedMessage(const char *json)
         }
         return;
     }
+
     if (strcmp(type, "broadcast") == 0)
     {
         char *timestamp = get_current_timestamp(); // Obtener el timestamp actual
@@ -121,18 +122,56 @@ void showFormattedMessage(const char *json)
     {
         printf("\n%s[USUARIOS CONECTADOS]%s: %s%s", color_labels, color_reset, color_message, content);
     }
-    else if (strcmp(type, "user_info") == 0)
+
+    else if (strcmp(type, "user_info_response") == 0)
     {
-        printf("\n%s[INFO USUARIO]%s: %s%s", color_labels, color_reset, color_message, content);
+        const char *target = getValueByKey(pares, n, "target");
+        const char *timestamp = getValueByKey(pares, n, "timestamp");
+
+        // Obtener IP y status del campo content (que es un JSON embebido)
+        const char *ip_start = strstr(json, "\"ip\":\"");
+        const char *status_start = strstr(json, "\"status\":\"");
+
+        char ip[64] = "";
+        char status[32] = "";
+
+        if (ip_start)
+        {
+            ip_start += 6; // avanzar después de "ip":"
+            const char *ip_end = strchr(ip_start, '"');
+            if (ip_end)
+                strncpy(ip, ip_start, ip_end - ip_start);
+        }
+
+        if (status_start)
+        {
+            status_start += 10; // avanzar después de "status":"
+            const char *status_end = strchr(status_start, '"');
+            if (status_end)
+                strncpy(status, status_start, status_end - status_start);
+        }
+
+        printf("\n%s[INFO USUARIO - %s]%s", color_labels, timestamp, color_reset);
+        printf("\n\t- %sUSER:%s %s", color_labels, color_reset, target);
+        printf("\n\t- %sIP:%s %s", color_labels, color_reset, ip);
+        printf("\n\t- %sSTATUS:%s %s", color_labels, color_reset, status);
     }
+
     else if (strcmp(type, "change_status") == 0)
     {
         printf("\n%s[ESTADO CAMBIADO]%s %s%s: %s", color_desconection, color_reset, color_my_user, sender, content);
     }
+
     else if (strcmp(type, "disconnect") == 0)
     {
         printf("\n%s[DESCONECTADO]%s %s%s %s", color_desconection, color_reset, color_my_user, sender, you_label);
     }
+
+    else if (strcmp(type, "user_info") == 0)
+    {
+        printf("IGNORANDO");
+    }
+
     else
     {
         printf("\n%s[OTRO]%s %s", color_reset, color_message, json);

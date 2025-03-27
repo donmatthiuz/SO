@@ -144,20 +144,39 @@ void actualizar_estado_usuario(const char *nombre, const char *nuevo_estado)
     }
 }
 
-char *crearJson_info_usuario(const char *nombre)
+char *crearJson_info_usuario(const char *nombre_objetivo)
 {
     for (int i = 0; i < MAX_USUARIOS; i++)
     {
-        if (usuarios[i].activo && strcmp(usuarios[i].nombre, nombre) == 0)
+        if (usuarios[i].activo && strcmp(usuarios[i].nombre, nombre_objetivo) == 0)
         {
-            char buffer[256];
-            snprintf(buffer, sizeof(buffer),
-                     "{\"type\":\"info_response\",\"name\":\"%s\",\"ip\":\"%s\",\"status\":\"%s\"}",
-                     usuarios[i].nombre, usuarios[i].ip, estado_to_string(usuarios[i].status));
-            return strdup(buffer);
+            char *timestamp = get_current_timestamp();
+            if (!timestamp)
+                return NULL;
+
+            int size = snprintf(NULL, 0,
+                                "{\"type\":\"user_info_response\",\"sender\":\"server\",\"target\":\"%s\",\"content\":{\"ip\":\"%s\",\"status\":\"%s\"},\"timestamp\":\"%s\"}",
+                                usuarios[i].nombre, usuarios[i].ip, estado_to_string(usuarios[i].status), timestamp) +
+                       1;
+
+            char *json = (char *)malloc(size);
+            if (!json)
+            {
+                free(timestamp);
+                return NULL;
+            }
+
+            snprintf(json, size,
+                     "{\"type\":\"user_info_response\",\"sender\":\"server\",\"target\":\"%s\",\"content\":{\"ip\":\"%s\",\"status\":\"%s\"},\"timestamp\":\"%s\"}",
+                     usuarios[i].nombre, usuarios[i].ip, estado_to_string(usuarios[i].status), timestamp);
+
+            free(timestamp);
+            return json;
         }
     }
-    return strdup("{\"type\":\"info_response\",\"error\":\"Usuario no encontrado\"}");
+
+    // Usuario no encontrado
+    return strdup("{\"type\":\"user_info_response\",\"sender\":\"server\",\"error\":\"Usuario no encontrado\"}");
 }
 
 char *crearJson_lista_usuarios()
@@ -336,10 +355,15 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             lws_callback_on_writable(wsi);
         }
 
-        pthread_mutex_lock(&mutex);
-        printf("\033[1;34m[Mensaje] de %s:\033[0m %s\n", pss->client_ip, message);
-        send_to_specific_client(sender, message);
-        pthread_mutex_unlock(&mutex);
+        // Reenviar solo mensajes que no sean respuestas del servidor
+        if (!(strcmp(tipo, "list_users") == 0 || strcmp(tipo, "user_info") == 0))
+        {
+            pthread_mutex_lock(&mutex);
+            printf("\033[1;34m[Mensaje] de %s:\033[0m %s\n", pss->client_ip, message);
+            send_to_specific_client(sender, message);
+            pthread_mutex_unlock(&mutex);
+        }
+
         break;
     }
 
