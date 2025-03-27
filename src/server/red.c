@@ -296,6 +296,12 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
                     printf("[INFO] Mensaje de registro enviado a %s\n", usuarios[i].nombre);
                 }
             }
+
+            char mensaje[256]; // Ajusta el tamaño si es necesario
+            snprintf(mensaje, sizeof(mensaje),
+                     "{\"type\":\"register_success\",\"sender\":\"server\",\"content\":\"Bienvenido %s\"}", sender);
+
+            send_to_specific_client(sender, mensaje);
             pthread_mutex_unlock(&mutex);
         }
 
