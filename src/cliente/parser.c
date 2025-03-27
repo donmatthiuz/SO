@@ -194,22 +194,20 @@ char *crearJson_private(const char *sender, const char *target, const char *mens
 
 char *crearJson_list_users(const char *sender)
 {
-    char *timestamp = get_current_timestamp();
     int tamaño = snprintf(NULL, 0,
-                          "{\"type\": \"list_users\", \"sender\": \"%s\", \"timestamp\": \"%s\"}",
-                          sender, timestamp) +
+                          "{\"type\": \"list_users\", \"sender\": \"%s\"}",
+                          sender) +
                  1;
 
     char *resultado = (char *)malloc(tamaño);
     if (!resultado)
     {
-        free(timestamp); // Liberar timestamp en caso de error
         return NULL;
     }
 
-    snprintf(resultado, tamaño, "{\"type\": \"list_users\", \"sender\": \"%s\", \"timestamp\": \"%s\"}", sender, timestamp);
-
-    free(timestamp); // Liberar el timestamp después de usarlo
+    snprintf(resultado, tamaño,
+             "{\"type\": \"list_users\", \"sender\": \"%s\"}",
+             sender);
 
     return resultado;
 }

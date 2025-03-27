@@ -50,10 +50,58 @@ const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
 */
 void showFormattedMessage(const char *json)
 {
+
+    if (strstr(json, "\"type\":\"list_users_response\""))
+    {
+        const char *start = strchr(json, '[');
+        const char *end = strchr(json, ']');
+        const char *timestamp_start = strstr(json, "\"timestamp\":\"");
+
+        char timestamp[64] = "";
+        if (timestamp_start)
+        {
+            timestamp_start += strlen("\"timestamp\":\"");
+            const char *timestamp_end = strchr(timestamp_start, '"');
+            if (timestamp_end && timestamp_end > timestamp_start)
+            {
+                size_t len = timestamp_end - timestamp_start;
+                strncpy(timestamp, timestamp_start, len);
+                timestamp[len] = '\0';
+            }
+        }
+
+        if (start && end && end > start)
+        {
+            char userlist[512];
+            strncpy(userlist, start + 1, end - start - 1);
+            userlist[end - start - 1] = '\0';
+
+            printf("\n%s[USUARIOS CONECTADOS - %s]%s:", color_labels, timestamp, color_reset);
+
+            char *token = strtok(userlist, ",");
+            while (token)
+            {
+                if (token[0] == '"')
+                    token++;
+                char *endquote = strchr(token, '"');
+                if (endquote)
+                    *endquote = '\0';
+
+                printf("\n\t%s- %s%s", color_message, token, color_reset);
+                token = strtok(NULL, ",");
+            }
+
+            printf("\n\n\t%s> ", color_input);
+            fflush(stdout);
+            return;
+        }
+    }
+
     JsonPair pares[10];
     int n = parse_json(json, pares, 10);
 
     const char *type = getValueByKey(pares, n, "type");
+    // printf("Valor de type: %s", type);
     const char *sender = getValueByKey(pares, n, "sender");
     const char *content = getValueByKey(pares, n, "content");
     const char *timestamp = getValueByKey(pares, n, "timestamp");
@@ -118,11 +166,6 @@ void showFormattedMessage(const char *json)
         }
     }
 
-    else if (strcmp(type, "list_response") == 0)
-    {
-        printf("\n%s[USUARIOS CONECTADOS]%s: %s%s", color_labels, color_reset, color_message, content);
-    }
-
     else if (strcmp(type, "user_info_response") == 0)
     {
         const char *target = getValueByKey(pares, n, "target");
@@ -165,11 +208,6 @@ void showFormattedMessage(const char *json)
     else if (strcmp(type, "disconnect") == 0)
     {
         printf("\n%s[DESCONECTADO]%s %s%s %s", color_desconection, color_reset, color_my_user, sender, you_label);
-    }
-
-    else if (strcmp(type, "user_info") == 0)
-    {
-        printf("IGNORANDO");
     }
 
     else

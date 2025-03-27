@@ -181,7 +181,7 @@ char *crearJson_info_usuario(const char *nombre_objetivo)
 
 char *crearJson_lista_usuarios()
 {
-    char buffer[1024] = "{\"type\":\"list_response\",\"users\":[";
+    char buffer[1024] = "{\"type\":\"list_users_response\",\"sender\":\"server\",\"content\":[";
     int first = 1;
 
     for (int i = 0; i < MAX_USUARIOS; i++)
@@ -197,7 +197,13 @@ char *crearJson_lista_usuarios()
         }
     }
 
-    strcat(buffer, "]}");
+    strcat(buffer, "],\"timestamp\":\"");
+
+    char *timestamp = get_current_timestamp();
+    strcat(buffer, timestamp);
+    strcat(buffer, "\"}");
+
+    free(timestamp);
     return strdup(buffer);
 }
 
@@ -292,6 +298,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             }
             pthread_mutex_unlock(&mutex);
         }
+
         else if (strcmp(tipo, "broadcast") == 0)
         {
             const char *mensaje = getValueByKey(pares, n, "content");
@@ -336,6 +343,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             send_to_specific_client(sender, respuesta);
             free(respuesta);
         }
+
         else if (strcmp(tipo, "user_info") == 0)
         {
             const char *target = getValueByKey(pares, n, "target");
@@ -343,11 +351,13 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             send_to_specific_client(sender, respuesta);
             free(respuesta);
         }
+
         else if (strcmp(tipo, "change_status") == 0)
         {
             const char *nuevo_estado = getValueByKey(pares, n, "content");
             actualizar_estado_usuario(sender, nuevo_estado);
         }
+
         else if (strcmp(tipo, "disconnect") == 0)
         {
             printf("[DESCONECTAR] %s cerró sesión\n", sender);

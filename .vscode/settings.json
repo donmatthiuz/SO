@@ -9,6 +9,7 @@
     "stdio.h": "c",
     "string.h": "c",
     "system_error": "c",
-    "pthread.h": "c"
+    "pthread.h": "c",
+    "ctype.h": "c"
   }
 }
