@@ -93,7 +93,7 @@ void showFormattedMessage(const char *json)
         return;
     }
 
-    if (strcmp(type, "register") == 0)
+    if (strcmp(type, "register_success") == 0)
     {
         if (strcmp(sender, nombre_usuario_global) == 0)
         {
