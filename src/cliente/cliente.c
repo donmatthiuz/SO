@@ -157,7 +157,7 @@ void showFormattedMessage(const char *json)
 
     else
     {
-        printf("\n%s[OTRO]%s %s", color_reset, color_message, json);
+        // printf("\n%s[OTRO]%s %s", color_reset, color_message, json);
     }
 
     printf("\n\n\t%s> ", color_input);
