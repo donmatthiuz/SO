@@ -12,6 +12,7 @@
 #include "parser.h"
 #include <pthread.h>
 #include <signal.h>
+#include <cjson/cJSON.h>
 
 static int connection_open = 0;
 static char nombre_usuario_global[50] = "";
@@ -50,62 +51,47 @@ const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
 */
 void showFormattedMessage(const char *json)
 {
-
-    if (strstr(json, "\"type\":\"list_users_response\""))
+    cJSON *root = cJSON_Parse(json);
+    if (!root)
     {
-        const char *start = strchr(json, '[');
-        const char *end = strchr(json, ']');
-        const char *timestamp_start = strstr(json, "\"timestamp\":\"");
-
-        char timestamp[64] = "";
-        if (timestamp_start)
-        {
-            timestamp_start += strlen("\"timestamp\":\"");
-            const char *timestamp_end = strchr(timestamp_start, '"');
-            if (timestamp_end && timestamp_end > timestamp_start)
-            {
-                size_t len = timestamp_end - timestamp_start;
-                strncpy(timestamp, timestamp_start, len);
-                timestamp[len] = '\0';
-            }
-        }
-
-        if (start && end && end > start)
-        {
-            char userlist[512];
-            strncpy(userlist, start + 1, end - start - 1);
-            userlist[end - start - 1] = '\0';
-
-            printf("\n%s[USUARIOS CONECTADOS - %s]%s:", color_labels, timestamp, color_reset);
-
-            char *token = strtok(userlist, ",");
-            while (token)
-            {
-                if (token[0] == '"')
-                    token++;
-                char *endquote = strchr(token, '"');
-                if (endquote)
-                    *endquote = '\0';
-
-                printf("\n\t%s- %s%s", color_message, token, color_reset);
-                token = strtok(NULL, ",");
-            }
-
-            printf("\n\n\t%s> ", color_input);
-            fflush(stdout);
-            return;
-        }
+        printf("[ERROR] No se pudo parsear el JSON\n");
+        return;
     }
 
-    JsonPair pares[10];
-    int n = parse_json(json, pares, 10);
+    const cJSON *typeObj = cJSON_GetObjectItem(root, "type");
+    const char *type = typeObj ? typeObj->valuestring : "";
 
-    const char *type = getValueByKey(pares, n, "type");
-    // printf("Valor de type: %s", type);
-    const char *sender = getValueByKey(pares, n, "sender");
-    const char *content = getValueByKey(pares, n, "content");
-    const char *timestamp = getValueByKey(pares, n, "timestamp");
+    const cJSON *senderObj = cJSON_GetObjectItem(root, "sender");
+    const char *sender = senderObj ? senderObj->valuestring : "";
+
+    const cJSON *timestampObj = cJSON_GetObjectItem(root, "timestamp");
+    const char *timestamp = timestampObj ? timestampObj->valuestring : "";
+
+    const cJSON *contentObj = cJSON_GetObjectItem(root, "content");
+
     const char *you_label = (strcmp(sender, nombre_usuario_global) == 0) ? "(YOU)" : "";
+
+    if (strcmp(type, "list_users_response") == 0)
+    {
+        printf("\n%s[USUARIOS CONECTADOS - %s]%s:", color_labels, timestamp, color_reset);
+
+        if (contentObj && cJSON_IsArray(contentObj))
+        {
+            cJSON *user;
+            cJSON_ArrayForEach(user, contentObj)
+            {
+                if (cJSON_IsString(user))
+                {
+                    printf("\n\t%s- %s%s", color_message, user->valuestring, color_reset);
+                }
+            }
+        }
+
+        printf("\n\n\t%s> ", color_input);
+        fflush(stdout);
+        cJSON_Delete(root);
+        return;
+    }
 
     if (strcmp(type, "register") == 0)
     {
@@ -117,82 +103,40 @@ void showFormattedMessage(const char *json)
         {
             printf("\n%s[USUARIO NUEVO]%s %s%s se ha unido al chat.%s\n", color_labels, color_reset, color_other_user, sender, color_reset);
         }
-        return;
     }
 
-    if (strcmp(type, "broadcast") == 0)
+    else if (strcmp(type, "broadcast") == 0)
     {
-        char *timestamp = get_current_timestamp(); // Obtener el timestamp actual
-
-        // Mostrar el mensaje con timestamp en el formato [BROADCAST - TIMESTAMP]
+        const char *msg = contentObj ? contentObj->valuestring : "";
         if (strcmp(sender, nombre_usuario_global) == 0)
         {
-            printf("\n%s[BROADCAST - %s] %s%s (YOU): %s%s%s", color_labels, timestamp, color_my_user, sender, color_reset, color_message, content);
+            printf("\n%s[BROADCAST - %s] %s%s (YOU): %s%s%s", color_labels, timestamp, color_my_user, sender, color_reset, color_message, msg);
         }
         else
         {
-            printf("\n%s[BROADCAST - %s] %s%s: %s%s", color_labels, timestamp, color_other_user, sender, color_message, content);
+            printf("\n%s[BROADCAST - %s] %s%s: %s%s", color_labels, timestamp, color_other_user, sender, color_message, msg);
         }
-
-        free(timestamp); // Liberar la memoria del timestamp
     }
 
     else if (strcmp(type, "private") == 0)
     {
-        const char *timestamp = getValueByKey(pares, n, "timestamp"); // Obtener el timestamp del mensaje privado
-
-        if (timestamp && strcmp(timestamp, "") != 0) // Asegurarse de que el timestamp no esté vacío
+        const char *msg = contentObj ? contentObj->valuestring : "";
+        if (strcmp(sender, nombre_usuario_global) == 0)
         {
-            if (strcmp(sender, nombre_usuario_global) == 0)
-            {
-                printf("\n\t%s[PRIVATE - %s] %s%s (YOU): %s%s%s", color_private_label, timestamp, color_my_user, sender, color_reset, color_message, content);
-            }
-            else
-            {
-                printf("\n\t%s[PRIVATE - %s] %s%s: %s%s", color_private_label, timestamp, color_other_user, sender, color_message, content);
-            }
+            printf("\n\t%s[PRIVATE - %s] %s%s (YOU): %s%s%s", color_private_label, timestamp, color_my_user, sender, color_reset, color_message, msg);
         }
         else
         {
-            // Si no hay timestamp, se imprime sin él, como estaba antes
-            if (strcmp(sender, nombre_usuario_global) == 0)
-            {
-                printf("\n\t%s[PRIVATE] %s%s (YOU): %s%s%s", color_private_label, color_my_user, sender, color_reset, color_message, content);
-            }
-            else
-            {
-                printf("\n\t%s[PRIVATE] %s%s: %s%s", color_private_label, color_other_user, sender, color_message, content);
-            }
+            printf("\n\t%s[PRIVATE - %s] %s%s: %s%s", color_private_label, timestamp, color_other_user, sender, color_message, msg);
         }
     }
 
     else if (strcmp(type, "user_info_response") == 0)
     {
-        const char *target = getValueByKey(pares, n, "target");
-        const char *timestamp = getValueByKey(pares, n, "timestamp");
-
-        // Obtener IP y status del campo content (que es un JSON embebido)
-        const char *ip_start = strstr(json, "\"ip\":\"");
-        const char *status_start = strstr(json, "\"status\":\"");
-
-        char ip[64] = "";
-        char status[32] = "";
-
-        if (ip_start)
-        {
-            ip_start += 6; // avanzar después de "ip":"
-            const char *ip_end = strchr(ip_start, '"');
-            if (ip_end)
-                strncpy(ip, ip_start, ip_end - ip_start);
-        }
-
-        if (status_start)
-        {
-            status_start += 10; // avanzar después de "status":"
-            const char *status_end = strchr(status_start, '"');
-            if (status_end)
-                strncpy(status, status_start, status_end - status_start);
-        }
+        const char *target = cJSON_GetObjectItem(root, "target")->valuestring;
+        cJSON *content = cJSON_GetObjectItem(root, "content");
+        const char *ip = cJSON_GetObjectItem(content, "ip")->valuestring;
+        const char *status = cJSON_GetObjectItem(content, "status")->valuestring;
 
         printf("\n%s[INFO USUARIO - %s]%s", color_labels, timestamp, color_reset);
         printf("\n\t- %sUSER:%s %s", color_labels, color_reset, target);
@@ -202,7 +146,8 @@ void showFormattedMessage(const char *json)
 
     else if (strcmp(type, "change_status") == 0)
     {
-        printf("\n%s[ESTADO CAMBIADO]%s %s%s: %s", color_desconection, color_reset, color_my_user, sender, content);
+        const char *msg = contentObj ? contentObj->valuestring : "";
+        printf("\n%s[ESTADO CAMBIADO]%s %s%s: %s", color_desconection, color_reset, color_my_user, sender, msg);
     }
 
     else if (strcmp(type, "disconnect") == 0)
@@ -217,6 +162,7 @@ void showFormattedMessage(const char *json)
 
     printf("\n\n\t%s> ", color_input);
     fflush(stdout);
+    cJSON_Delete(root);
 }
 
 // Función para obtener la IP local del equipo

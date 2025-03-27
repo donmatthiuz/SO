@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <cjson/cJSON.h>
 
 typedef struct
 {
@@ -124,158 +125,104 @@ int parse_json(const char *json_str, JsonPair *pairs, int max_pairs)
 
 char *crearJson_register(const char *nombre_usuario)
 {
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "type", "register");
+    cJSON_AddStringToObject(root, "sender", nombre_usuario);
+    cJSON_AddNullToObject(root, "content");
+
     char *timestamp = get_current_timestamp();
-    int tamaño = snprintf(NULL, 0, "{\"type\": \"register\", \"sender\": \"%s\", \"content\": null, \"timestamp\": \"%s\"}", nombre_usuario, timestamp) + 1;
+    cJSON_AddStringToObject(root, "timestamp", timestamp);
+    free(timestamp);
 
-    char *resultado = (char *)malloc(tamaño);
-    if (!resultado)
-    {
-        printf("Error al asignar memoria\n");
-        free(timestamp); // Liberar timestamp en caso de error
-        return NULL;
-    }
-
-    snprintf(resultado, tamaño, "{\"type\": \"register\", \"sender\": \"%s\", \"content\": null, \"timestamp\": \"%s\"}", nombre_usuario, timestamp);
-
-    free(timestamp); // Liberar el timestamp después de usarlo
-
-    return resultado;
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json_str;
 }
 
 char *crearJson_broadcast(const char *sender, const char *mensaje)
 {
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "type", "broadcast");
+    cJSON_AddStringToObject(root, "sender", sender);
+    cJSON_AddStringToObject(root, "content", mensaje);
+
     char *timestamp = get_current_timestamp();
-    int tamaño = snprintf(NULL, 0,
-                          "{\"type\": \"broadcast\", \"sender\": \"%s\", \"content\": \"%s\", \"timestamp\": \"%s\"}",
-                          sender, mensaje, timestamp) +
-                 1;
+    cJSON_AddStringToObject(root, "timestamp", timestamp);
+    free(timestamp);
 
-    // Asignar memoria para el mensaje
-    char *resultado = (char *)malloc(tamaño);
-    if (!resultado)
-    {
-        free(timestamp); // Liberar timestamp en caso de error
-        return NULL;
-    }
-
-    // Crear el mensaje con el timestamp
-    snprintf(resultado, tamaño,
-             "{\"type\": \"broadcast\", \"sender\": \"%s\", \"content\": \"%s\", \"timestamp\": \"%s\"}",
-             sender, mensaje, timestamp);
-
-    free(timestamp); // Liberar el timestamp después de usarlo
-
-    return resultado;
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json_str;
 }
 
 char *crearJson_private(const char *sender, const char *target, const char *mensaje)
 {
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "type", "private");
+    cJSON_AddStringToObject(root, "sender", sender);
+    cJSON_AddStringToObject(root, "target", target);
+    cJSON_AddStringToObject(root, "content", mensaje);
+
     char *timestamp = get_current_timestamp();
-    int tamaño = snprintf(NULL, 0,
-                          "{\"type\": \"private\", \"sender\": \"%s\", \"target\": \"%s\", \"content\": \"%s\", \"timestamp\": \"%s\"}",
-                          sender, target, mensaje, timestamp) +
-                 1;
+    cJSON_AddStringToObject(root, "timestamp", timestamp);
+    free(timestamp);
 
-    char *resultado = (char *)malloc(tamaño);
-    if (!resultado)
-    {
-        free(timestamp); // Liberar timestamp en caso de error
-        return NULL;
-    }
-
-    snprintf(resultado, tamaño,
-             "{\"type\": \"private\", \"sender\": \"%s\", \"target\": \"%s\", \"content\": \"%s\", \"timestamp\": \"%s\"}",
-             sender, target, mensaje, timestamp);
-
-    free(timestamp); // Liberar el timestamp después de usarlo
-
-    return resultado;
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json_str;
 }
 
 char *crearJson_list_users(const char *sender)
 {
-    int tamaño = snprintf(NULL, 0,
-                          "{\"type\": \"list_users\", \"sender\": \"%s\"}",
-                          sender) +
-                 1;
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "type", "list_users");
+    cJSON_AddStringToObject(root, "sender", sender);
 
-    char *resultado = (char *)malloc(tamaño);
-    if (!resultado)
-    {
-        return NULL;
-    }
-
-    snprintf(resultado, tamaño,
-             "{\"type\": \"list_users\", \"sender\": \"%s\"}",
-             sender);
-
-    return resultado;
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json_str;
 }
 
 char *crearJson_user_info(const char *sender, const char *target)
 {
-    int tamaño = snprintf(NULL, 0,
-                          "{\"type\": \"user_info\", \"sender\": \"%s\", \"target\": \"%s\"}",
-                          sender, target) +
-                 1;
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "type", "user_info");
+    cJSON_AddStringToObject(root, "sender", sender);
+    cJSON_AddStringToObject(root, "target", target);
 
-    char *resultado = (char *)malloc(tamaño);
-    if (!resultado)
-    {
-        return NULL;
-    }
-
-    snprintf(resultado, tamaño,
-             "{\"type\": \"user_info\", \"sender\": \"%s\", \"target\": \"%s\"}",
-             sender, target);
-
-    return resultado;
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json_str;
 }
 
 char *crearJson_change_status(const char *sender, const char *nuevo_estado)
 {
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "type", "change_status");
+    cJSON_AddStringToObject(root, "sender", sender);
+    cJSON_AddStringToObject(root, "content", nuevo_estado);
+
     char *timestamp = get_current_timestamp();
-    int tamaño = snprintf(NULL, 0,
-                          "{\"type\": \"change_status\", \"sender\": \"%s\", \"content\": \"%s\", \"timestamp\": \"%s\"}",
-                          sender, nuevo_estado, timestamp) +
-                 1;
+    cJSON_AddStringToObject(root, "timestamp", timestamp);
+    free(timestamp);
 
-    char *resultado = (char *)malloc(tamaño);
-    if (!resultado)
-    {
-        free(timestamp); // Liberar timestamp en caso de error
-        return NULL;
-    }
-
-    snprintf(resultado, tamaño,
-             "{\"type\": \"change_status\", \"sender\": \"%s\", \"content\": \"%s\", \"timestamp\": \"%s\"}",
-             sender, nuevo_estado, timestamp);
-
-    free(timestamp); // Liberar el timestamp después de usarlo
-
-    return resultado;
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json_str;
 }
 
 char *crearJson_disconnect(const char *sender)
 {
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "type", "disconnect");
+    cJSON_AddStringToObject(root, "sender", sender);
+    cJSON_AddStringToObject(root, "content", "Cierre de sesión");
+
     char *timestamp = get_current_timestamp();
-    int tamaño = snprintf(NULL, 0,
-                          "{\"type\": \"disconnect\", \"sender\": \"%s\", \"content\": \"Cierre de sesión\", \"timestamp\": \"%s\"}",
-                          sender, timestamp) +
-                 1;
+    cJSON_AddStringToObject(root, "timestamp", timestamp);
+    free(timestamp);
 
-    char *resultado = (char *)malloc(tamaño);
-    if (!resultado)
-    {
-        free(timestamp); // Liberar timestamp en caso de error
-        return NULL;
-    }
-
-    snprintf(resultado, tamaño,
-             "{\"type\": \"disconnect\", \"sender\": \"%s\", \"content\": \"Cierre de sesión\", \"timestamp\": \"%s\"}",
-             sender, timestamp);
-
-    free(timestamp); // Liberar el timestamp después de usarlo
-
-    return resultado;
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json_str;
 }
