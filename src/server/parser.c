@@ -130,6 +130,21 @@ char *crearJson_Registro_Exitoso(const char *sender, const char *tiempo, Usuario
 }
 
 
+
+char *crearjsonError(const char *sender,const char *tiempo, const char *contenido)
+{
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "type", "error");
+    cJSON_AddStringToObject(root, "sender", sender);
+    cJSON_AddStringToObject(root, "content", contenido);
+    cJSON_AddStringToObject(root, "timestamp", tiempo);
+
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json_str;
+}
+
+
 const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
 {
     for (int i = 0; i < cantidad; i++)

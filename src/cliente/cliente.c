@@ -105,6 +105,17 @@ void showFormattedMessage(const char *json)
             printf("\n%s[USUARIO NUEVO]%s %s%s se ha unido al chat.%s\n", color_labels, color_reset, color_other_user, sender, color_reset);
         }
     }
+    else if (strcmp(type, "error") == 0){
+        const char *msg = contentObj ? contentObj->valuestring : "";
+        if (strcmp(sender, nombre_usuario_global) == 0)
+        {
+            printf("\n%s[ERROR - %s] %s%s (YOU): %s%s%s", color_error, timestamp, color_my_user, sender, color_reset, color_error, msg);
+        }
+        else
+        {
+            printf("\n%s[ERROR - %s] %s%s: %s%s", color_error, timestamp, color_other_user, sender, color_error, msg);
+        }
+    }
 
     else if (strcmp(type, "broadcast") == 0)
     {
