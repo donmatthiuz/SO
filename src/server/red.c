@@ -462,7 +462,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             pthread_mutex_unlock(&mutex);
         }
 
-        // Reenviar solo mensajes que no sean respuestas del servidor
+        
         if (!(strcmp(tipo, "list_users") == 0 || strcmp(tipo, "user_info") == 0))
         {
             pthread_mutex_lock(&mutex);
