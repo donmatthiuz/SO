@@ -390,7 +390,7 @@ int main()
     }
 
     // Solicitar nombre de usuario
-    printf("%sEscribe tu usuario: %s", color_user_input, color_input);
+    printf("%sRegistre/Loguearse con su usuario: %s", color_user_input, color_input);
     if (fgets(nombre_usuario_global, sizeof(nombre_usuario_global), stdin))
     {
         nombre_usuario_global[strcspn(nombre_usuario_global, "\n")] = 0; // Eliminar salto de línea

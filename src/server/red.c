@@ -77,22 +77,49 @@ void *monitor_inactividad(void *arg)
 }
 
 
-void registrar_usuario(const char *nombre, const char *ip, struct lws *wsi)
+bool registrar_usuario(const char *nombre, const char *ip, struct lws *wsi)
 {
+    for (int i = 0; i < MAX_USUARIOS; i++)
+    {
+        if (usuarios[i].activo && strcmp(usuarios[i].ip, ip) == 0)
+        {
+
+            if (strcmp(usuarios[i].nombre, nombre) == 0)
+            {
+                
+                usuarios[i].wsi = wsi;
+                usuarios[i].status = 0; // Aquí puedes poner el estado que consideres apropiado
+                printf("[INFO] Usuario '%s' reactivado en la IP: %s\n", nombre, ip);
+                return true;  // Registro exitoso, se reactiva el usuario
+            }
+            else
+            {
+                
+                printf("[ERROR] Conflicto de nombres. La IP '%s' ya está registrada con el usuario '%s'.\n", ip, usuarios[i].nombre);
+                return false;  
+            }
+        }
+    }
+
+   
     for (int i = 0; i < MAX_USUARIOS; i++)
     {
         if (!usuarios[i].activo)
         {
+            // Si hay espacio y la IP no está registrada
             strncpy(usuarios[i].nombre, nombre, sizeof(usuarios[i].nombre));
             strncpy(usuarios[i].ip, ip, sizeof(usuarios[i].ip));
             usuarios[i].wsi = wsi;
-            usuarios[i].status = 0;
+            usuarios[i].status = 0; // Asignar el estado inicial del usuario
             usuarios[i].activo = 1;
-            printf("[INFO] Usuario registrado: %s (%s)\n", nombre, ip);
-            return;
+            printf("[INFO] Usuario '%s' registrado en la IP: %s\n", nombre, ip);
+            return true;  // Registro exitoso
         }
     }
+
+    
     printf("[ERROR] No hay espacio para más usuarios.\n");
+    return false;  // No hay espacio para más usuarios
 }
 
 void sighandler(int sig)
