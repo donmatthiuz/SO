@@ -108,8 +108,9 @@ void sighandler(int sig)
     force_exit = 1;
 }
 
-void send_to_specific_client(const char *target_name, const char *message)
+void send_to_specific_client  (const char *target_name, const char *message, const char *sender_name)
 {
+    int encontrado = 0;
     for (int i = 0; i < MAX_USUARIOS; i++)
     {
         if (usuarios[i].activo && strcmp(usuarios[i].nombre, target_name) == 0)
@@ -129,6 +130,11 @@ void send_to_specific_client(const char *target_name, const char *message)
             free(buf);
             return;
         }
+    }
+    if (!encontrado){
+        char *timestamp = get_current_timestamp();
+        char *json = crearjsonError("server", timestamp,  "Usuario no encontrado");
+        send_to_specific_client(sender_name, json, "");
     }
     printf("[WARN] Cliente '%s' no encontrado\n", target_name);
 }
@@ -160,6 +166,7 @@ void *client_thread(void *arg)
 
 void actualizar_estado_usuario(const char *nombre, const char *nuevo_estado)
 {
+    
     for (int i = 0; i < MAX_USUARIOS; i++)
     {
         if (usuarios[i].activo && strcmp(usuarios[i].nombre, nombre) == 0)
@@ -176,11 +183,13 @@ void actualizar_estado_usuario(const char *nombre, const char *nuevo_estado)
 
 char *crearJson_info_usuario(const char *nombre_objetivo)
 {
+    char *timestamp = get_current_timestamp();
+    int encontrado = 0;
     for (int i = 0; i < MAX_USUARIOS; i++)
     {
         if (usuarios[i].activo && strcmp(usuarios[i].nombre, nombre_objetivo) == 0)
         {
-            char *timestamp = get_current_timestamp();
+            
             if (!timestamp)
                 return NULL;
 
@@ -205,8 +214,14 @@ char *crearJson_info_usuario(const char *nombre_objetivo)
         }
     }
 
+    if (!encontrado)
+    {
+        char *json;
+        
+        json = crearjsonError("server", timestamp, "No se encontro informacion del usuario");
+    }
     // Usuario no encontrado
-    return strdup("{\"type\":\"user_info_response\",\"sender\":\"server\",\"error\":\"Usuario no encontrado\"}");
+    
 }
 
 char *crearJson_lista_usuarios()
@@ -349,7 +364,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             strncpy(mensaje, json, sizeof(mensaje) - 1);
             mensaje[sizeof(mensaje) - 1] = '\0';
 
-            send_to_specific_client(sender, mensaje);
+            send_to_specific_client(sender, mensaje, sender);
             pthread_mutex_unlock(&mutex);
         }
 
@@ -386,7 +401,9 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             {   
                 // Verifica si el mensaje ya fue enviado a este destinatario
                 printf("[PRIVATE] Enviando mensaje a %s\n", destino);
-                send_to_specific_client(destino, message);
+                pthread_mutex_lock(&mutex);
+                send_to_specific_client(destino, message, sender);
+                pthread_mutex_unlock(&mutex);
             }
         }
 
@@ -395,9 +412,10 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             pthread_mutex_lock(&mutex);
             printf("[LISTA] %s pidió la lista de usuarios\n", sender);
             char *respuesta = crearJson_lista_usuarios();
-            send_to_specific_client(sender, respuesta);
-            pthread_mutex_unlock(&mutex);
+            send_to_specific_client(sender, respuesta, sender);
             free(respuesta);
+            pthread_mutex_unlock(&mutex);
+            
         }
 
         else if (strcmp(tipo, "user_info") == 0)
@@ -405,7 +423,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             pthread_mutex_lock(&mutex);
             const char *target = getValueByKey(pares, n, "target");
             char *respuesta = crearJson_info_usuario(target);
-            send_to_specific_client(sender, respuesta);
+            send_to_specific_client(sender, respuesta, sender);
             free(respuesta);
             pthread_mutex_unlock(&mutex);
         }
@@ -432,7 +450,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
         {
             pthread_mutex_lock(&mutex);
             printf("\033[1;34m[Mensaje] de %s:\033[0m %s\n", pss->client_ip, message);
-            send_to_specific_client(sender, message);
+            send_to_specific_client(sender, message, sender);
             pthread_mutex_unlock(&mutex);
         }
 
@@ -450,9 +468,10 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
                 break;
             }
         }
+        pss->is_active = 0;
         pthread_mutex_unlock(&mutex);
         printf("\033[1;31m[-] Cliente desconectado: %s\033[0m\n", pss->client_id);
-        pss->is_active = 0;
+        
         break;
     }
 
