@@ -13,23 +13,21 @@
 #include <pthread.h>
 #include <signal.h>
 #include <cjson/cJSON.h>
+#include "ui.h"
 
 static int connection_open = 0;
 static char nombre_usuario_global[50] = "";
+static char status_global[50] = "ACTIVO";
 
-const char *color_info = "\033[1;36m";
-const char *color_wait = "\033[1;33m";
-const char *color_user_input = "\033[1;32m";
-const char *color_error = "\033[1;31m";
 
-const char *color_labels = "\033[1;36m";        // celeste
-const char *color_message = "\033[1;37m";       // blanco
-const char *color_private_label = "\033[1;35m"; // rosa
-const char *color_other_user = "\033[1;33m";    // amarillo
-const char *color_my_user = "\033[1;32m";       // verde
-const char *color_desconection = "\033[1;31m";  // rojo
-const char *color_input = "\033[1;30m";         // gris
-const char *color_reset = "\033[0m";
+
+
+
+
+
+
+
+
 
 /*
     Devuelve el valor asociado a una clave de un dataset clave-valor, si no existe devuelve vacío
@@ -266,9 +264,11 @@ void *leer_mensajes(void *arg)
             {
                 json = crearJson_user_info(nombre_usuario_global, user_input + 6);
             }
-            else if (strncmp(user_input, "/status ", 8) == 0)
-            {
-                json = crearJson_change_status(nombre_usuario_global, user_input + 8);
+            else if (strncmp(user_input, "/status", 7) == 0)
+            {   
+                char nuevo_estado[10];
+                seleccionar_estado(nuevo_estado, status_global);
+                json = crearJson_change_status(nombre_usuario_global, nuevo_estado);
             }
             else if (strncmp(user_input, "/exit", 5) == 0)
             {
@@ -346,6 +346,8 @@ int main()
     ccinfo.protocol = "chat-protocol";
     ccinfo.origin = local_ip; // Asignar la IP local al campo origin
 
+
+    mostrar_comandos();
     // Conectar al servidor WebSocket
     wsi = lws_client_connect_via_info(&ccinfo);
     if (!wsi)
@@ -388,11 +390,11 @@ int main()
         free(json);
     }
 
-    // Crear un hilo para la lectura de mensajes
+   
     pthread_t hilo_lectura;
     pthread_create(&hilo_lectura, NULL, leer_mensajes, (void *)wsi);
 
-    // Bucle principal para mantener la conexión
+    
     while (connection_open)
     {
         lws_service(context, 100);
