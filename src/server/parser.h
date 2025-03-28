@@ -25,4 +25,6 @@ char *crearJson_disconnect(const char *sender);
 char *crearJson_Registro_Exitoso(const char *sender, const char *tiempo, UsuarioRegistrado *usuarios, int max_usuarios);
 char *crearjsonError(const char *sender,const char *tiempo, const char *contenido);
 char *crearJson_Brodcast_register(const char *sender, const char *tiempo, const char* nombre_usuario);
+char *crearJsonCambi_status_server(const char *sender,const char *tiempo, const char *contenido);
+
 #endif

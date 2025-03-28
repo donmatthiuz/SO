@@ -161,6 +161,21 @@ char *crearjsonError(const char *sender,const char *tiempo, const char *contenid
 }
 
 
+char *crearJsonCambi_status_server(const char *sender,const char *tiempo, const char *contenido, const char* status, const char* usuario)
+{
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "type", "status_update");
+    cJSON_AddStringToObject(root, "sender", sender);
+    
+    cJSON_AddStringToObject(root, "timestamp", tiempo);
+    cJSON *additional_json = cJSON_CreateObject();
+    cJSON_AddStringToObject(additional_json, "user", status);
+    cJSON_AddStringToObject(additional_json, "status", usuario);
+    cJSON_AddStringToObject(root, "content", additional_json);
+    cJSON_Delete(root);
+    return json_str;
+}
+
 const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
 {
     for (int i = 0; i < cantidad; i++)
