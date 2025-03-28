@@ -130,6 +130,22 @@ char *crearJson_Registro_Exitoso(const char *sender, const char *tiempo, Usuario
 }
 
 
+char *crearJson_Brodcast_register(const char *sender, const char *tiempo, const char* nombre_usuario)
+{
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "type", "broadcast");
+    cJSON_AddStringToObject(root, "sender", sender);
+    char mensaje[256];
+    snprintf(mensaje, sizeof(mensaje), "Se ha registrado el usuario: %s", nombre_usuario);
+    cJSON_AddStringToObject(root, "content", mensaje);
+    cJSON_AddStringToObject(root, "timestamp", tiempo);
+    
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json_str;
+}
+
+
 
 char *crearjsonError(const char *sender,const char *tiempo, const char *contenido)
 {

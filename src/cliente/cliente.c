@@ -294,6 +294,7 @@ void *leer_mensajes(void *arg)
             {
                 json = crearJson_disconnect(nombre_usuario_global);
                 connection_open = 0;
+                break;
             }
 
             

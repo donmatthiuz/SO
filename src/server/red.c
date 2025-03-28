@@ -10,17 +10,9 @@
 
 #define MAX_CLIENTS 100
 #define MAX_USUARIOS 100
-#define TIEMPO_INACTIVIDAD 60
+#define TIEMPO_INACTIVIDAD 80
 
-// typedef struct
-// {
-//     char nombre[50];
-//     char ip[50];
-//     struct lws *wsi;
-//     int status; // 0 = ACTIVO, 1 = OCUPADO, 2 = INACTIVO
-//     int activo;
-//     time_t ultima_actividad; 
-// } UsuarioRegistrado;
+
 UsuarioRegistrado usuarios[MAX_USUARIOS];
 volatile int force_exit = 0;
 pthread_mutex_t mutex;
@@ -332,38 +324,36 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
 
         if (strcmp(tipo, "register") == 0)
         {
+            char *timestamp = get_current_timestamp();
             registrar_usuario(sender, pss->client_ip, wsi);
+            char *json = crearJson_Registro_Exitoso("mathew", timestamp, usuarios, MAX_USUARIOS);
+
 
             // Notificar a todos los usuarios que un nuevo usuario se ha registrado
             char mensaje_nuevo_usuario[256];
-            snprintf(mensaje_nuevo_usuario, sizeof(mensaje_nuevo_usuario), "{\"type\":\"register\",\"sender\":\"%s\",\"content\":\"\"}", sender);
+            char *json2 = crearJson_Brodcast_register("server", timestamp, sender);
 
+            snprintf(mensaje_nuevo_usuario, sizeof(mensaje_nuevo_usuario), "%s", json2);
+
+            //printf(mensaje_nuevo_usuario);
             pthread_mutex_lock(&mutex);
             for (int i = 0; i < MAX_USUARIOS; i++)
             {
                 if (usuarios[i].activo && usuarios[i].wsi != wsi) // Evitar enviarlo al mismo cliente que se registró
                 {
-                    int len_msg = strlen(mensaje_nuevo_usuario);
-                    unsigned char *buf = malloc(LWS_PRE + len_msg);
-                    if (!buf)
-                    {
-                        printf("[ERROR] Memoria insuficiente para el mensaje de registro\n");
-                        continue;
-                    }
-                    memcpy(buf + LWS_PRE, mensaje_nuevo_usuario, len_msg);
-                    lws_write(usuarios[i].wsi, buf + LWS_PRE, len_msg, LWS_WRITE_TEXT);
-                    free(buf);
+                    
+                    send_to_specific_client(usuarios[i].nombre, mensaje_nuevo_usuario, "server");
                     printf("[INFO] Mensaje de registro enviado a %s\n", usuarios[i].nombre);
                 }
             }
 
             char mensaje[256]; // Ajusta el tamaño si es necesario
-            char *timestamp = get_current_timestamp();
-            char *json = crearJson_Registro_Exitoso("server", timestamp, usuarios, MAX_USUARIOS);
+           
+            
 
             strncpy(mensaje, json, sizeof(mensaje) - 1);
             mensaje[sizeof(mensaje) - 1] = '\0';
-
+            
             send_to_specific_client(sender, mensaje, sender);
             pthread_mutex_unlock(&mutex);
         }
