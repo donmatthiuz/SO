@@ -12,15 +12,15 @@
 #define MAX_USUARIOS 100
 #define TIEMPO_INACTIVIDAD 60
 
-typedef struct
-{
-    char nombre[50];
-    char ip[50];
-    struct lws *wsi;
-    int status; // 0 = ACTIVO, 1 = OCUPADO, 2 = INACTIVO
-    int activo;
-    time_t ultima_actividad; 
-} UsuarioRegistrado;
+// typedef struct
+// {
+//     char nombre[50];
+//     char ip[50];
+//     struct lws *wsi;
+//     int status; // 0 = ACTIVO, 1 = OCUPADO, 2 = INACTIVO
+//     int activo;
+//     time_t ultima_actividad; 
+// } UsuarioRegistrado;
 UsuarioRegistrado usuarios[MAX_USUARIOS];
 volatile int force_exit = 0;
 pthread_mutex_t mutex;
@@ -343,8 +343,11 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             }
 
             char mensaje[256]; // Ajusta el tamaño si es necesario
-            snprintf(mensaje, sizeof(mensaje),
-                     "{\"type\":\"register_success\",\"sender\":\"server\",\"content\":\"Bienvenido %s\", \"timestamp\": ""}", sender);
+            char *timestamp = get_current_timestamp();
+            char *json = crearJson_Registro_Exitoso("server", timestamp, usuarios, MAX_USUARIOS);
+
+            strncpy(mensaje, json, sizeof(mensaje) - 1);
+            mensaje[sizeof(mensaje) - 1] = '\0';
 
             send_to_specific_client(sender, mensaje);
             pthread_mutex_unlock(&mutex);
