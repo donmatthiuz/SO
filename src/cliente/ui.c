@@ -80,6 +80,10 @@ void mostrar_comandos() {
   printf("%s| /status <estado>                                              |%s\n", color_labels, color_reset);
   printf("%s|   Cambia tu estado (por ejemplo: en línea, ocupado, ausente). |%s\n", color_message, color_reset);
   printf("%s|   Ejemplo: /status ocupado                                    |%s\n", color_wait, color_reset);
+  
+  printf("%s| /ayuda                                                        |%s\n", color_labels, color_reset);
+  printf("%s|  Mostrar los comandos que puedo usar                          |%s\n", color_message, color_reset);
+  printf("%s|   Ejemplo: /ayuda                                             |%s\n", color_wait, color_reset);
 
   printf("%s| /exit                                                         |%s\n", color_labels, color_reset);
   printf("%s|   Cierra la conexión y sale del chat.                         |%s\n", color_message, color_reset);

@@ -236,14 +236,14 @@ void *leer_mensajes(void *arg)
 
     while (connection_open)
     {
-        // printf("> ");
+      
         if (fgets(user_input, sizeof(user_input), stdin))
         {
             user_input[strcspn(user_input, "\n")] = 0; // Eliminar el salto de línea
 
             char *json = NULL;
 
-            // Procesar comandos específicos del usuario
+           
             if (strncmp(user_input, "/broadcast ", 11) == 0)
             {
                 json = crearJson_broadcast(nombre_usuario_global, user_input + 11);
@@ -273,17 +273,26 @@ void *leer_mensajes(void *arg)
                 seleccionar_estado(nuevo_estado, status_global);
                 json = crearJson_change_status(nombre_usuario_global, nuevo_estado);
             }
+            else if (strncmp(user_input, "/ayuda", 5) == 0){
+
+                mostrar_comandos();
+
+            }
+
             else if (strncmp(user_input, "/exit", 5) == 0)
             {
                 json = crearJson_disconnect(nombre_usuario_global);
                 connection_open = 0;
             }
+
+            
+
             else
             {
                 json = crearJson_broadcast(nombre_usuario_global, user_input);
             }
 
-            // Enviar mensaje si es válido
+           
             if (json && strlen(json) > 0)
             {
                 unsigned char *buffer = (unsigned char *)calloc(1, LWS_PRE + strlen(json));
@@ -306,7 +315,7 @@ void *leer_mensajes(void *arg)
 
 int main()
 {
-    // Cargar variables de entorno desde el archivo .env
+    
     const char *archivo = ".env";
     VariableEntorno *variables = NULL;
     int cantidad = cargar_variables_entorno(archivo, &variables);
@@ -328,7 +337,7 @@ int main()
         return -1;
     }
 
-    // Configuración del contexto WebSocket
+    
     info.port = CONTEXT_PORT_NO_LISTEN;
     info.protocols = protocols;
 
@@ -347,11 +356,11 @@ int main()
     ccinfo.port = atoi(variables[1].valor);
     ccinfo.path = "/";
     ccinfo.protocol = "chat-protocol";
-    ccinfo.origin = local_ip; // Asignar la IP local al campo origin
+    ccinfo.origin = local_ip; 
 
 
     mostrar_comandos();
-    // Conectar al servidor WebSocket
+    
     wsi = lws_client_connect_via_info(&ccinfo);
     if (!wsi)
     {
@@ -360,7 +369,7 @@ int main()
         return -1;
     }
 
-    // Esperar hasta que la conexión se haya establecido
+   
     while (!connection_open)
     {
         lws_service(context, 100);
