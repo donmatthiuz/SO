@@ -27,11 +27,17 @@ static char status_global[50] = "ACTIVO";
 
 
 
+void *escuchar_servidor(void *arg)
+{
+    struct lws_context *context = (struct lws_context *)arg;
+    while (connection_open)
+    {
+        lws_service(context, 100);
+    }
+    return NULL;
+}
 
 
-/*
-    Devuelve el valor asociado a una clave de un dataset clave-valor, si no existe devuelve vacío
-*/
 const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
 {
     for (int i = 0; i < cantidad; i++)
@@ -44,9 +50,6 @@ const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
     return "";
 }
 
-/*
-    Recibe un json y lo muestra de una mejor forma de acuerdo al tipo de mensaje
-*/
 void showFormattedMessage(const char *json)
 {
     cJSON *root = cJSON_Parse(json);
@@ -170,7 +173,7 @@ char *get_local_ip()
     struct hostent *host_entry;
     int hostname;
 
-    // Obtener el nombre del host
+  
     hostname = gethostname(hostbuffer, sizeof(hostbuffer));
     if (hostname == -1)
     {
@@ -178,7 +181,7 @@ char *get_local_ip()
         return NULL;
     }
 
-    // Obtener la información del host
+    
     host_entry = gethostbyname(hostbuffer);
     if (host_entry == NULL)
     {
@@ -191,7 +194,7 @@ char *get_local_ip()
     return inet_ntoa(*address);
 }
 
-// Función de callback para manejar eventos de WebSocket
+
 static int callback_client(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len)
 {
     switch (reason)
@@ -220,12 +223,12 @@ static int callback_client(struct lws *wsi, enum lws_callback_reasons reason, vo
     return 0;
 }
 
-// Definición del protocolo WebSocket
+
 static struct lws_protocols protocols[] = {
     {"chat-protocol", callback_client, 0, 4096},
     {NULL, NULL, 0, 0}};
 
-// Función que permite al usuario leer y enviar mensajes
+
 void *leer_mensajes(void *arg)
 {
     struct lws *wsi = (struct lws *)arg;
@@ -394,6 +397,9 @@ int main()
     pthread_t hilo_lectura;
     pthread_create(&hilo_lectura, NULL, leer_mensajes, (void *)wsi);
 
+    pthread_t hilo_escucha;
+    pthread_create(&hilo_escucha, NULL, escuchar_servidor, (void *)context);
+
     
     while (connection_open)
     {
@@ -401,6 +407,8 @@ int main()
     }
 
     pthread_join(hilo_lectura, NULL);
+    pthread_join(hilo_escucha, NULL);
+
     lws_context_destroy(context);
     return 0;
 }
