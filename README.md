@@ -1,15 +1,65 @@
 # SO
 
+
+
+## Protocolo
+[Click aqui](doc/protocolo.md)
+
+## Cliente Funcionamiento
+[Click aqui]()
+
+## Servidor
+[Click aqui]()
+
+
+## Instalaciones
+Para ejecutar el programa sigue los siguientes pasos
+
+- Instale las librerias
+
+cjson
+```
+sudo apt update
+sudo apt install libcjson-dev
+```
+
+pthreads
+```
+sudo apt install libpthread-stubs0-dev
+
+```
+
+libwebsockets
+```
+sudo apt install libwebsockets-dev
+```
+
+- Server: Luego vayase a la carpeta src y server:
+```
+gcc cliente.c parser.c ui.c -o cliente.o -lwebsockets -lpthread -lcjson
+```
+
+- Cambie el .env de src/cliente
+```
+SERVER=IP DE SU SERVER
+PUERTO=PUERTO DEL SERVER
+```
+
+- Cliente: Luego vayase a la carpeta src/cliente y ejecute:
+```
+gcc red.c parser.c -o server.o -lwebsockets -lpthread -lcjson
+```
+
 ## Descripcion
 
-# Proyecto de Chat en C con Sockets
+### Proyecto de Chat en C con Sockets
 
-## **Descripción**
+### **Descripción**
 Este proyecto consiste en la implementación de un sistema de chat en C utilizando sockets y multithreading para la comunicación entre clientes y un servidor. Se basa en un modelo desarrollado en 2006 por Bob Dugan y Erik Véliz y está diseñado para reforzar conocimientos sobre concurrencia, procesos y comunicación entre procesos en sistemas operativos.
 
-## **Componentes del Proyecto**
+### **Componentes del Proyecto**
 
-### **Servidor**
+#### **Servidor**
 - Mantiene una lista de usuarios conectados.
 - Solo puede haber una instancia en ejecución.
 - Atiende múltiples clientes usando hilos (multithreading).
@@ -22,7 +72,7 @@ Este proyecto consiste en la implementación de un sistema de chat en C utilizan
   - `<nombredelservidor>` es el nombre del programa.
   - `<puertodelservidor>` es el puerto en el que escucha conexiones.
 
-### **Cliente**
+#### **Cliente**
 - Se conecta al servidor y se registra con un nombre único.
 - Puede enviar y recibir mensajes en un chat general o privado.
 - Puede cambiar su estado (ACTIVO, OCUPADO, INACTIVO).
@@ -36,7 +86,7 @@ Este proyecto consiste en la implementación de un sistema de chat en C utilizan
   - `<nombredeusuario>` es el identificador del cliente en el chat.
   - `<IPdelservidor>` y `<puertodelservidor>` son los datos del servidor.
 
-## **Funciones del Servidor**
+### **Funciones del Servidor**
 - **Registro de usuarios:** Guarda el usuario y su IP, rechazando duplicados.
 - **Manejo de desconexión:** Elimina de la lista a usuarios que cierran sesión.
 - **Listar usuarios:** Responde con la lista de usuarios conectados.
@@ -44,7 +94,7 @@ Este proyecto consiste en la implementación de un sistema de chat en C utilizan
 - **Cambio de estado:** Los usuarios pueden cambiar entre ACTIVO, OCUPADO e INACTIVO.
 - **Mensajería:** Permite el chat general (broadcast) y mensajes directos.
 
-## **Funciones del Cliente**
+### **Funciones del Cliente**
 El cliente debe permitir:
 1. Chatear con todos los usuarios (broadcasting).
 2. Enviar y recibir mensajes directos.
@@ -63,11 +113,3 @@ Donde:
 - `<mensaje>` es el texto a enviar.
 
 
-## Protocolo
-[Click aqui](doc/protocolo.md)
-
-## Cliente
-[Click aqui]()
-
-## Servidor
-[Click aqui]()
