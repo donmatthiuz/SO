@@ -161,7 +161,7 @@ char *crearjsonError(const char *sender,const char *tiempo, const char *contenid
 }
 
 
-char *crearJsonCambi_status_server(const char *sender,const char *tiempo, const char *contenido, const char* status, const char* usuario)
+char *crearJsonCambi_status_server(const char *sender,const char *tiempo,  const char* status, const char* usuario)
 {
     cJSON *root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "type", "status_update");
@@ -171,7 +171,9 @@ char *crearJsonCambi_status_server(const char *sender,const char *tiempo, const 
     cJSON *additional_json = cJSON_CreateObject();
     cJSON_AddStringToObject(additional_json, "user", status);
     cJSON_AddStringToObject(additional_json, "status", usuario);
-    cJSON_AddStringToObject(root, "content", additional_json);
+    char *json_string = cJSON_PrintUnformatted(additional_json);
+    cJSON_AddStringToObject(root, "content", json_string);
+    char *json_str = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return json_str;
 }

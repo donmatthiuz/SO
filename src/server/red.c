@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <time.h>
 #include "parser.h"
+#include <stdbool.h>
 
 #define MAX_CLIENTS 100
 #define MAX_USUARIOS 100
@@ -79,47 +80,68 @@ void *monitor_inactividad(void *arg)
 
 bool registrar_usuario(const char *nombre, const char *ip, struct lws *wsi)
 {
+    int encontrado = 0;
+    char *timestamp = get_current_timestamp();
     for (int i = 0; i < MAX_USUARIOS; i++)
     {
-        if (usuarios[i].activo && strcmp(usuarios[i].ip, ip) == 0)
+        printf("Error entrando");
+        if ( strcmp(usuarios[i].ip, ip) == 0)
         {
+            encontrado = 1;
+            printf("Error entrando 2");
 
             if (strcmp(usuarios[i].nombre, nombre) == 0)
             {
-                
+                printf("Error entrando 3");
+                usuarios[i].activo = 1;
                 usuarios[i].wsi = wsi;
-                usuarios[i].status = 0; // Aquí puedes poner el estado que consideres apropiado
+                usuarios[i].status = 0;
                 printf("[INFO] Usuario '%s' reactivado en la IP: %s\n", nombre, ip);
                 return true;  // Registro exitoso, se reactiva el usuario
             }
             else
             {
-                
-                printf("[ERROR] Conflicto de nombres. La IP '%s' ya está registrada con el usuario '%s'.\n", ip, usuarios[i].nombre);
+
+                if (i < MAX_USUARIOS && usuarios[i].nombre != NULL) {
+                    if (strcmp(usuarios[i].ip, ip) == 0) {
+                        if (strcmp(usuarios[i].nombre, nombre) != 0) {
+                            char *json_error = crearjsonError("server", timestamp, "Ya tiene un nombre de usuario con esta ip");
+                            send_to_unknow_client(json_error, wsi);
+                            printf("[ERROR] Conflicto de nombres. La IP '%s' ya está registrada con el usuario '%s'.\n", ip, usuarios[i].nombre);
+                            usuarios[i].activo = 0;
+                        } else {
+
+                        }
+                    }
+                }
+
                 return false;  
             }
         }
     }
 
-   
-    for (int i = 0; i < MAX_USUARIOS; i++)
-    {
-        if (!usuarios[i].activo)
+    if (!encontrado){
+        for (int i = 0; i < MAX_USUARIOS; i++)
         {
-            // Si hay espacio y la IP no está registrada
-            strncpy(usuarios[i].nombre, nombre, sizeof(usuarios[i].nombre));
-            strncpy(usuarios[i].ip, ip, sizeof(usuarios[i].ip));
-            usuarios[i].wsi = wsi;
-            usuarios[i].status = 0; // Asignar el estado inicial del usuario
-            usuarios[i].activo = 1;
-            printf("[INFO] Usuario '%s' registrado en la IP: %s\n", nombre, ip);
-            return true;  // Registro exitoso
+            
+            
+                
+                strncpy(usuarios[i].nombre, nombre, sizeof(usuarios[i].nombre));
+                strncpy(usuarios[i].ip, ip, sizeof(usuarios[i].ip));
+                usuarios[i].wsi = wsi;
+                usuarios[i].status = 0; // Asignar el estado inicial del usuario
+                usuarios[i].activo = 1;
+                printf("[INFO] Usuario '%s' registrado en la IP: %s\n", nombre, ip);
+                return true;  
+            
         }
+
     }
 
     
     printf("[ERROR] No hay espacio para más usuarios.\n");
-    return false;  // No hay espacio para más usuarios
+    free(timestamp);
+    return false; 
 }
 
 void sighandler(int sig)
@@ -150,12 +172,32 @@ void send_to_specific_client  (const char *target_name, const char *message, con
             return;
         }
     }
-    if (!encontrado){
+    if (!encontrado && sender_name != ""){
         char *timestamp = get_current_timestamp();
         char *json = crearjsonError("server", timestamp,  "Usuario no encontrado");
         send_to_specific_client(sender_name, json, "");
     }
     printf("[WARN] Cliente '%s' no encontrado\n", target_name);
+}
+
+
+
+
+void send_to_unknow_client  (const char *message, struct lws *wsi)
+{
+    int message_len = strlen(message);
+    unsigned char *buf = malloc(LWS_PRE + message_len);
+    if (!buf)
+    {
+        printf("Memory allocation error\n");
+        return;
+    }
+
+    memcpy(buf + LWS_PRE, message, message_len);
+    printf("[INFO] Enviando mensaje a usuario desconocido : %s \n",  message);
+    lws_write(wsi, buf + LWS_PRE, message_len, LWS_WRITE_TEXT);
+
+    free(buf);
 }
 
 void *client_thread(void *arg)
@@ -352,37 +394,41 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
         if (strcmp(tipo, "register") == 0)
         {
             char *timestamp = get_current_timestamp();
-            registrar_usuario(sender, pss->client_ip, wsi);
-            char *json = crearJson_Registro_Exitoso("mathew", timestamp, usuarios, MAX_USUARIOS);
+            bool exito = registrar_usuario(sender, pss->client_ip, wsi);
+
+            if (exito)  {///
+                char *json = crearJson_Registro_Exitoso("mathew", timestamp, usuarios, MAX_USUARIOS);
 
 
-            // Notificar a todos los usuarios que un nuevo usuario se ha registrado
-            char mensaje_nuevo_usuario[256];
-            char *json2 = crearJson_Brodcast_register("server", timestamp, sender);
+                // Notificar a todos los usuarios que un nuevo usuario se ha registrado
+                char mensaje_nuevo_usuario[256];
+                char *json2 = crearJson_Brodcast_register("server", timestamp, sender);
 
-            snprintf(mensaje_nuevo_usuario, sizeof(mensaje_nuevo_usuario), "%s", json2);
+                snprintf(mensaje_nuevo_usuario, sizeof(mensaje_nuevo_usuario), "%s", json2);
 
-            //printf(mensaje_nuevo_usuario);
-            pthread_mutex_lock(&mutex);
-            for (int i = 0; i < MAX_USUARIOS; i++)
-            {
-                if (usuarios[i].activo && usuarios[i].wsi != wsi) // Evitar enviarlo al mismo cliente que se registró
+                //printf(mensaje_nuevo_usuario);
+                pthread_mutex_lock(&mutex);
+                for (int i = 0; i < MAX_USUARIOS; i++)
                 {
-                    
-                    send_to_specific_client(usuarios[i].nombre, mensaje_nuevo_usuario, "server");
-                    printf("[INFO] Mensaje de registro enviado a %s\n", usuarios[i].nombre);
+                    if (usuarios[i].activo && usuarios[i].wsi != wsi) // Evitar enviarlo al mismo cliente que se registró
+                    {
+                        
+                        send_to_specific_client(usuarios[i].nombre, mensaje_nuevo_usuario, "server");
+                        printf("[INFO] Mensaje de registro enviado a %s\n", usuarios[i].nombre);
+                    }
                 }
-            }
 
-            char mensaje[256]; // Ajusta el tamaño si es necesario
-           
+                char mensaje[256]; // Ajusta el tamaño si es necesario
             
+                
 
-            strncpy(mensaje, json, sizeof(mensaje) - 1);
-            mensaje[sizeof(mensaje) - 1] = '\0';
-            
-            send_to_specific_client(sender, mensaje, sender);
-            pthread_mutex_unlock(&mutex);
+                strncpy(mensaje, json, sizeof(mensaje) - 1);
+                mensaje[sizeof(mensaje) - 1] = '\0';
+                
+                send_to_specific_client(sender, mensaje, sender);
+                pthread_mutex_unlock(&mutex);
+
+            }//
         }
 
         else if (strcmp(tipo, "broadcast") == 0)
@@ -447,9 +493,13 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
 
         else if (strcmp(tipo, "change_status") == 0)
         {
+            
             pthread_mutex_lock(&mutex);
+            char *timestamp = get_current_timestamp();
             const char *nuevo_estado = getValueByKey(pares, n, "content");
             actualizar_estado_usuario(sender, nuevo_estado);
+            char *json_sender = crearJsonCambi_status_server("server",timestamp,  nuevo_estado, sender);
+            send_to_specific_client(sender,json_sender, "server");
             pthread_mutex_unlock(&mutex);
         }
 

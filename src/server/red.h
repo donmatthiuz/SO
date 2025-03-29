@@ -10,5 +10,7 @@ typedef struct
     int activo;
     time_t ultima_actividad; 
 } UsuarioRegistrado;
+void send_to_unknow_client(const char *message, struct lws *wsi);
+
 
 #endif
