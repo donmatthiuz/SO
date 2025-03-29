@@ -428,18 +428,21 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             printf("[BROADCAST] %s: %s\n", sender, mensaje);
 
             pthread_mutex_lock(&mutex);
+            char *timestamp = get_current_timestamp();
+
+            char *json_response = crearJson_Brodcast_2("server", timestamp, mensaje);
             for (int i = 0; i < MAX_USUARIOS; i++)
             {
                 if (usuarios[i].activo && usuarios[i].wsi != wsi) // Evitar enviarlo al mismo cliente que lo envió
                 {
-                    int len_msg = strlen(message);
+                    int len_msg = strlen(json_response);
                     unsigned char *buf = malloc(LWS_PRE + len_msg);
                     if (!buf)
                     {
                         printf("[ERROR] Memoria insuficiente para broadcast\n");
                         continue;
                     }
-                    memcpy(buf + LWS_PRE, message, len_msg);
+                    memcpy(buf + LWS_PRE, json_response, len_msg);
                     lws_write(usuarios[i].wsi, buf + LWS_PRE, len_msg, LWS_WRITE_TEXT);
                     free(buf);
                     printf("[INFO] Mensaje broadcast enviado a %s\n", usuarios[i].nombre);
