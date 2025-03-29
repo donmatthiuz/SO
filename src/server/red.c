@@ -166,7 +166,7 @@ void send_to_specific_client(const char *target_name, const char *message, const
             return;
         }
     }
-    if (!encontrado)
+    if (!encontrado && sender_name != "")
     {
         char *timestamp = get_current_timestamp();
         char *json = crearjsonError("server", timestamp, "Usuario no encontrado");
