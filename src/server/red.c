@@ -84,15 +84,13 @@ bool registrar_usuario(const char *nombre, const char *ip, struct lws *wsi)
     char *timestamp = get_current_timestamp();
     for (int i = 0; i < MAX_USUARIOS; i++)
     {
-        printf("Error entrando");
+        
         if ( strcmp(usuarios[i].ip, ip) == 0)
         {
             encontrado = 1;
-            printf("Error entrando 2");
-
+        
             if (strcmp(usuarios[i].nombre, nombre) == 0)
             {
-                printf("Error entrando 3");
                 usuarios[i].activo = 1;
                 usuarios[i].wsi = wsi;
                 usuarios[i].status = 0;
