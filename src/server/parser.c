@@ -112,6 +112,7 @@ char *crearJson_Registro_Exitoso(const char *sender, const char *tiempo, Usuario
     cJSON_AddStringToObject(root, "content", "Registro exitoso");
     cJSON_AddStringToObject(root, "timestamp", tiempo);
 
+  
     cJSON *userList = cJSON_CreateArray();
     for (int i = 0; i < max_usuarios; i++)
     {
@@ -128,35 +129,9 @@ char *crearJson_Registro_Exitoso(const char *sender, const char *tiempo, Usuario
     return json_str;
 }
 
-char *crearJson_Brodcast_register(const char *sender, const char *tiempo, const char *nombre_usuario)
-{
-    cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "type", "broadcast");
-    cJSON_AddStringToObject(root, "sender", sender);
-    char mensaje[256];
-    snprintf(mensaje, sizeof(mensaje), "Se ha registrado el usuario: %s", nombre_usuario);
-    cJSON_AddStringToObject(root, "content", mensaje);
-    cJSON_AddStringToObject(root, "timestamp", tiempo);
 
-    char *json_str = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-    return json_str;
-}
 
-char *crearJson_Brodcast_2(const char *sender, const char *tiempo, const char *mensaje)
-{
-    cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "type", "broadcast");
-    cJSON_AddStringToObject(root, "sender", sender);
-    cJSON_AddStringToObject(root, "content", mensaje);
-    cJSON_AddStringToObject(root, "timestamp", tiempo);
-
-    char *json_str = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-    return json_str;
-}
-
-char *crearjsonError(const char *sender, const char *tiempo, const char *contenido)
+char *crearjsonError(const char *sender,const char *tiempo, const char *contenido)
 {
     cJSON *root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "type", "error");
@@ -169,22 +144,6 @@ char *crearjsonError(const char *sender, const char *tiempo, const char *conteni
     return json_str;
 }
 
-char *crearJsonCambi_status_server(const char *sender, const char *tiempo, const char *status, const char *usuario)
-{
-    cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "type", "status_update");
-    cJSON_AddStringToObject(root, "sender", sender);
-
-    cJSON_AddStringToObject(root, "timestamp", tiempo);
-    cJSON *additional_json = cJSON_CreateObject();
-    cJSON_AddStringToObject(additional_json, "user", status);
-    cJSON_AddStringToObject(additional_json, "status", usuario);
-    char *json_string = cJSON_PrintUnformatted(additional_json);
-    cJSON_AddStringToObject(root, "content", json_string);
-    char *json_str = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-    return json_str;
-}
 
 const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
 {

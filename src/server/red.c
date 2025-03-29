@@ -7,12 +7,20 @@
 #include <unistd.h>
 #include <time.h>
 #include "parser.h"
-#include <stdbool.h>
 
 #define MAX_CLIENTS 100
 #define MAX_USUARIOS 100
-#define TIEMPO_INACTIVIDAD 200
+#define TIEMPO_INACTIVIDAD 60
 
+// typedef struct
+// {
+//     char nombre[50];
+//     char ip[50];
+//     struct lws *wsi;
+//     int status; // 0 = ACTIVO, 1 = OCUPADO, 2 = INACTIVO
+//     int activo;
+//     time_t ultima_actividad; 
+// } UsuarioRegistrado;
 UsuarioRegistrado usuarios[MAX_USUARIOS];
 volatile int force_exit = 0;
 pthread_mutex_t mutex;
@@ -49,6 +57,8 @@ char *get_current_timestamp()
     return buf;
 }
 
+
+
 void *monitor_inactividad(void *arg)
 {
     while (!force_exit)
@@ -60,7 +70,7 @@ void *monitor_inactividad(void *arg)
         {
             if (usuarios[i].activo && usuarios[i].status != 2) // revisa si esta ya inactivo
             {
-                if (difftime(ahora, usuarios[i].ultima_actividad) >= TIEMPO_INACTIVIDAD) // 60 segundos sin actividad dice inactivo
+                if (difftime(ahora, usuarios[i].ultima_actividad) >= TIEMPO_INACTIVIDAD)//60 segundos sin actividad dice inactivo
                 {
                     usuarios[i].status = 2;
                     printf("[INACTIVIDAD] Usuario %s marcado como INACTIVO\n", usuarios[i].nombre);
@@ -69,73 +79,28 @@ void *monitor_inactividad(void *arg)
         }
         pthread_mutex_unlock(&mutex);
 
-        sleep(10); // el hilo revisa estas veces
+        sleep(10); //el hilo revisa estas veces
     }
     return NULL;
 }
 
-bool registrar_usuario(const char *nombre, const char *ip, struct lws *wsi)
+
+void registrar_usuario(const char *nombre, const char *ip, struct lws *wsi)
 {
-    int encontrado = 0;
-    char *timestamp = get_current_timestamp();
     for (int i = 0; i < MAX_USUARIOS; i++)
     {
-
-        if (strcmp(usuarios[i].ip, ip) == 0)
+        if (!usuarios[i].activo)
         {
-            encontrado = 1;
-
-            if (strcmp(usuarios[i].nombre, nombre) == 0)
-            {
-                usuarios[i].activo = 1;
-                usuarios[i].wsi = wsi;
-                usuarios[i].status = 0;
-                printf("[INFO] Usuario '%s' reactivado en la IP: %s\n", nombre, ip);
-                return true; // Registro exitoso, se reactiva el usuario
-            }
-            else
-            {
-
-                if (i < MAX_USUARIOS && usuarios[i].nombre != NULL)
-                {
-                    if (strcmp(usuarios[i].ip, ip) == 0)
-                    {
-                        if (strcmp(usuarios[i].nombre, nombre) != 0)
-                        {
-                            char *json_error = crearjsonError("server", timestamp, "Ya tiene un nombre de usuario con esta ip");
-                            send_to_unknow_client(json_error, wsi);
-                            printf("[ERROR] Conflicto de nombres. La IP '%s' ya está registrada con el usuario '%s'.\n", ip, usuarios[i].nombre);
-                            usuarios[i].activo = 0;
-                        }
-                        else
-                        {
-                        }
-                    }
-                }
-
-                return false;
-            }
-        }
-    }
-
-    if (!encontrado)
-    {
-        for (int i = 0; i < MAX_USUARIOS; i++)
-        {
-
             strncpy(usuarios[i].nombre, nombre, sizeof(usuarios[i].nombre));
             strncpy(usuarios[i].ip, ip, sizeof(usuarios[i].ip));
             usuarios[i].wsi = wsi;
-            usuarios[i].status = 0; // Asignar el estado inicial del usuario
+            usuarios[i].status = 0;
             usuarios[i].activo = 1;
-            printf("[INFO] Usuario '%s' registrado en la IP: %s\n", nombre, ip);
-            return true;
+            printf("[INFO] Usuario registrado: %s (%s)\n", nombre, ip);
+            return;
         }
     }
-
     printf("[ERROR] No hay espacio para más usuarios.\n");
-    free(timestamp);
-    return false;
 }
 
 void sighandler(int sig)
@@ -143,12 +108,12 @@ void sighandler(int sig)
     force_exit = 1;
 }
 
-void send_to_specific_client(const char *target_name, const char *message, const char *sender_name)
+void send_to_specific_client  (const char *target_name, const char *message, const char *sender_name)
 {
     int encontrado = 0;
     for (int i = 0; i < MAX_USUARIOS; i++)
     {
-        if (strcmp(usuarios[i].nombre, target_name) == 0)
+        if (usuarios[i].activo && strcmp(usuarios[i].nombre, target_name) == 0)
         {
             int message_len = strlen(message);
             unsigned char *buf = malloc(LWS_PRE + message_len);
@@ -166,35 +131,12 @@ void send_to_specific_client(const char *target_name, const char *message, const
             return;
         }
     }
-    if (!encontrado && sender_name != "" && sender_name != "server")
-    {
+    if (!encontrado){
         char *timestamp = get_current_timestamp();
-        char *json = crearjsonError("server", timestamp, "Usuario no encontrado");
+        char *json = crearjsonError("server", timestamp,  "Usuario no encontrado");
         send_to_specific_client(sender_name, json, "");
     }
-    else
-    {
-        char *timestamp = get_current_timestamp();
-        char *json = crearjsonError("server", timestamp, "Usuario no encontrado");
-    }
     printf("[WARN] Cliente '%s' no encontrado\n", target_name);
-}
-
-void send_to_unknow_client(const char *message, struct lws *wsi)
-{
-    int message_len = strlen(message);
-    unsigned char *buf = malloc(LWS_PRE + message_len);
-    if (!buf)
-    {
-        printf("Memory allocation error\n");
-        return;
-    }
-
-    memcpy(buf + LWS_PRE, message, message_len);
-    printf("[INFO] Enviando mensaje a usuario desconocido : %s \n", message);
-    lws_write(wsi, buf + LWS_PRE, message_len, LWS_WRITE_TEXT);
-
-    free(buf);
 }
 
 void *client_thread(void *arg)
@@ -224,7 +166,7 @@ void *client_thread(void *arg)
 
 void actualizar_estado_usuario(const char *nombre, const char *nuevo_estado)
 {
-
+    
     for (int i = 0; i < MAX_USUARIOS; i++)
     {
         if (usuarios[i].activo && strcmp(usuarios[i].nombre, nombre) == 0)
@@ -247,7 +189,7 @@ char *crearJson_info_usuario(const char *nombre_objetivo)
     {
         if (usuarios[i].activo && strcmp(usuarios[i].nombre, nombre_objetivo) == 0)
         {
-
+            
             if (!timestamp)
                 return NULL;
 
@@ -275,10 +217,11 @@ char *crearJson_info_usuario(const char *nombre_objetivo)
     if (!encontrado)
     {
         char *json;
-
+        
         json = crearjsonError("server", timestamp, "No se encontro informacion del usuario");
     }
     // Usuario no encontrado
+    
 }
 
 char *crearJson_lista_usuarios()
@@ -308,6 +251,10 @@ char *crearJson_lista_usuarios()
     free(timestamp);
     return strdup(buffer);
 }
+
+
+
+
 
 static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
                          void *user, void *in, size_t len)
@@ -350,7 +297,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
     }
 
     case LWS_CALLBACK_RECEIVE:
-
+    
     {
         char message[len + 1];
         memcpy(message, in, len);
@@ -373,53 +320,52 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
                 strncpy(sender, pares[i].value, sizeof(sender));
         }
 
+        
         for (int i = 0; i < MAX_USUARIOS; i++)
-        {
-            if (usuarios[i].activo && strcmp(usuarios[i].nombre, sender) == 0)
             {
-                usuarios[i].ultima_actividad = time(NULL);
-                break;
-            }
+                if (usuarios[i].activo && strcmp(usuarios[i].nombre, sender) == 0)
+                {
+                    usuarios[i].ultima_actividad = time(NULL);
+                    break;
+                }
         }
 
         if (strcmp(tipo, "register") == 0)
         {
+            registrar_usuario(sender, pss->client_ip, wsi);
+
+            // Notificar a todos los usuarios que un nuevo usuario se ha registrado
+            char mensaje_nuevo_usuario[256];
+            snprintf(mensaje_nuevo_usuario, sizeof(mensaje_nuevo_usuario), "{\"type\":\"register\",\"sender\":\"%s\",\"content\":\"\"}", sender);
+
             pthread_mutex_lock(&mutex);
-            char *timestamp = get_current_timestamp();
-            bool exito = registrar_usuario(sender, pss->client_ip, wsi);
-            pthread_mutex_unlock(&mutex);
-
-            if (exito)
-            { ///
-                char *json = crearJson_Registro_Exitoso("mathew", timestamp, usuarios, MAX_USUARIOS);
-
-                // Notificar a todos los usuarios que un nuevo usuario se ha registrado
-                char mensaje_nuevo_usuario[256];
-                char *json2 = crearJson_Brodcast_register("server", timestamp, sender);
-
-                snprintf(mensaje_nuevo_usuario, sizeof(mensaje_nuevo_usuario), "%s", json2);
-
-                // printf(mensaje_nuevo_usuario);
-                pthread_mutex_lock(&mutex);
-                for (int i = 0; i < MAX_USUARIOS; i++)
+            for (int i = 0; i < MAX_USUARIOS; i++)
+            {
+                if (usuarios[i].activo && usuarios[i].wsi != wsi) // Evitar enviarlo al mismo cliente que se registró
                 {
-                    if (usuarios[i].activo && usuarios[i].wsi != wsi) // Evitar enviarlo al mismo cliente que se registró
+                    int len_msg = strlen(mensaje_nuevo_usuario);
+                    unsigned char *buf = malloc(LWS_PRE + len_msg);
+                    if (!buf)
                     {
-
-                        send_to_specific_client(usuarios[i].nombre, mensaje_nuevo_usuario, "server");
-                        printf("[INFO] Mensaje de registro enviado a %s\n", usuarios[i].nombre);
+                        printf("[ERROR] Memoria insuficiente para el mensaje de registro\n");
+                        continue;
                     }
+                    memcpy(buf + LWS_PRE, mensaje_nuevo_usuario, len_msg);
+                    lws_write(usuarios[i].wsi, buf + LWS_PRE, len_msg, LWS_WRITE_TEXT);
+                    free(buf);
+                    printf("[INFO] Mensaje de registro enviado a %s\n", usuarios[i].nombre);
                 }
+            }
 
-                char mensaje[256]; // Ajusta el tamaño si es necesario
+            char mensaje[256]; // Ajusta el tamaño si es necesario
+            char *timestamp = get_current_timestamp();
+            char *json = crearJson_Registro_Exitoso("server", timestamp, usuarios, MAX_USUARIOS);
 
-                strncpy(mensaje, json, sizeof(mensaje) - 1);
-                mensaje[sizeof(mensaje) - 1] = '\0';
+            strncpy(mensaje, json, sizeof(mensaje) - 1);
+            mensaje[sizeof(mensaje) - 1] = '\0';
 
-                send_to_specific_client(sender, mensaje, sender);
-                pthread_mutex_unlock(&mutex);
-
-            } //
+            send_to_specific_client(sender, mensaje, sender);
+            pthread_mutex_unlock(&mutex);
         }
 
         else if (strcmp(tipo, "broadcast") == 0)
@@ -428,21 +374,18 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             printf("[BROADCAST] %s: %s\n", sender, mensaje);
 
             pthread_mutex_lock(&mutex);
-            char *timestamp = get_current_timestamp();
-
-            char *json_response = crearJson_Brodcast_2("server", timestamp, mensaje);
             for (int i = 0; i < MAX_USUARIOS; i++)
             {
                 if (usuarios[i].activo && usuarios[i].wsi != wsi) // Evitar enviarlo al mismo cliente que lo envió
                 {
-                    int len_msg = strlen(json_response);
+                    int len_msg = strlen(message);
                     unsigned char *buf = malloc(LWS_PRE + len_msg);
                     if (!buf)
                     {
                         printf("[ERROR] Memoria insuficiente para broadcast\n");
                         continue;
                     }
-                    memcpy(buf + LWS_PRE, json_response, len_msg);
+                    memcpy(buf + LWS_PRE, message, len_msg);
                     lws_write(usuarios[i].wsi, buf + LWS_PRE, len_msg, LWS_WRITE_TEXT);
                     free(buf);
                     printf("[INFO] Mensaje broadcast enviado a %s\n", usuarios[i].nombre);
@@ -455,7 +398,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
         {
             const char *destino = getValueByKey(pares, n, "target");
             if (destino)
-            {
+            {   
                 // Verifica si el mensaje ya fue enviado a este destinatario
                 printf("[PRIVATE] Enviando mensaje a %s\n", destino);
                 pthread_mutex_lock(&mutex);
@@ -465,13 +408,14 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
         }
 
         else if (strcmp(tipo, "list_users") == 0)
-        {
+        {   
             pthread_mutex_lock(&mutex);
             printf("[LISTA] %s pidió la lista de usuarios\n", sender);
             char *respuesta = crearJson_lista_usuarios();
             send_to_specific_client(sender, respuesta, sender);
             free(respuesta);
             pthread_mutex_unlock(&mutex);
+            
         }
 
         else if (strcmp(tipo, "user_info") == 0)
@@ -486,13 +430,9 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
 
         else if (strcmp(tipo, "change_status") == 0)
         {
-
             pthread_mutex_lock(&mutex);
-            char *timestamp = get_current_timestamp();
             const char *nuevo_estado = getValueByKey(pares, n, "content");
             actualizar_estado_usuario(sender, nuevo_estado);
-            char *json_sender = crearJsonCambi_status_server("server", timestamp, nuevo_estado, sender);
-            send_to_specific_client(sender, json_sender, "server");
             pthread_mutex_unlock(&mutex);
         }
 
@@ -505,6 +445,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             pthread_mutex_unlock(&mutex);
         }
 
+        // Reenviar solo mensajes que no sean respuestas del servidor
         if (!(strcmp(tipo, "list_users") == 0 || strcmp(tipo, "user_info") == 0))
         {
             pthread_mutex_lock(&mutex);
@@ -530,7 +471,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
         pss->is_active = 0;
         pthread_mutex_unlock(&mutex);
         printf("\033[1;31m[-] Cliente desconectado: %s\033[0m\n", pss->client_id);
-
+        
         break;
     }
 
@@ -581,6 +522,7 @@ int main()
     {
         pthread_detach(hilo_inactividad);
     }
+
 
     printf("\n\033[1;36mServidor WebSocket en ws://localhost:5000/\033[0m\n\n");
 
