@@ -11,7 +11,7 @@
 
 #define MAX_CLIENTS 100
 #define MAX_USUARIOS 100
-#define TIEMPO_INACTIVIDAD 80
+#define TIEMPO_INACTIVIDAD 200
 
 UsuarioRegistrado usuarios[MAX_USUARIOS];
 volatile int force_exit = 0;
