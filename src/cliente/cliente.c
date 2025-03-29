@@ -19,14 +19,6 @@ static int connection_open = 0;
 static char nombre_usuario_global[50] = "";
 static char status_global[50] = "ACTIVO";
 
-
-
-
-
-
-
-
-
 void *escuchar_servidor(void *arg)
 {
     struct lws_context *context = (struct lws_context *)arg;
@@ -36,7 +28,6 @@ void *escuchar_servidor(void *arg)
     }
     return NULL;
 }
-
 
 const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
 {
@@ -105,7 +96,8 @@ void showFormattedMessage(const char *json)
             printf("\n%s[USUARIO NUEVO]%s %s%s se ha unido al chat.%s\n", color_labels, color_reset, color_other_user, sender, color_reset);
         }
     }
-    else if (strcmp(type, "error") == 0){
+    else if (strcmp(type, "error") == 0)
+    {
         const char *msg = contentObj ? contentObj->valuestring : "";
         if (strcmp(sender, nombre_usuario_global) == 0)
         {
@@ -184,7 +176,6 @@ char *get_local_ip()
     struct hostent *host_entry;
     int hostname;
 
-  
     hostname = gethostname(hostbuffer, sizeof(hostbuffer));
     if (hostname == -1)
     {
@@ -192,7 +183,6 @@ char *get_local_ip()
         return NULL;
     }
 
-    
     host_entry = gethostbyname(hostbuffer);
     if (host_entry == NULL)
     {
@@ -204,7 +194,6 @@ char *get_local_ip()
     struct in_addr *address = (struct in_addr *)host_entry->h_addr_list[0];
     return inet_ntoa(*address);
 }
-
 
 static int callback_client(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len)
 {
@@ -234,11 +223,9 @@ static int callback_client(struct lws *wsi, enum lws_callback_reasons reason, vo
     return 0;
 }
 
-
 static struct lws_protocols protocols[] = {
     {"chat-protocol", callback_client, 0, 4096},
     {NULL, NULL, 0, 0}};
-
 
 void *leer_mensajes(void *arg)
 {
@@ -247,14 +234,13 @@ void *leer_mensajes(void *arg)
 
     while (connection_open)
     {
-      
+
         if (fgets(user_input, sizeof(user_input), stdin))
         {
             user_input[strcspn(user_input, "\n")] = 0; // Eliminar el salto de línea
 
             char *json = NULL;
 
-           
             if (strncmp(user_input, "/broadcast ", 11) == 0)
             {
                 json = crearJson_broadcast(nombre_usuario_global, user_input + 11);
@@ -279,15 +265,15 @@ void *leer_mensajes(void *arg)
                 json = crearJson_user_info(nombre_usuario_global, user_input + 6);
             }
             else if (strncmp(user_input, "/status", 7) == 0)
-            {   
+            {
                 char nuevo_estado[10];
                 seleccionar_estado(nuevo_estado, status_global);
                 json = crearJson_change_status(nombre_usuario_global, nuevo_estado);
             }
-            else if (strncmp(user_input, "/ayuda", 5) == 0){
+            else if (strncmp(user_input, "/ayuda", 5) == 0)
+            {
 
                 mostrar_comandos();
-
             }
 
             else if (strncmp(user_input, "/exit", 5) == 0)
@@ -297,14 +283,11 @@ void *leer_mensajes(void *arg)
                 break;
             }
 
-            
-
             else
             {
                 json = crearJson_broadcast(nombre_usuario_global, user_input);
             }
 
-           
             if (json && strlen(json) > 0)
             {
                 unsigned char *buffer = (unsigned char *)calloc(1, LWS_PRE + strlen(json));
@@ -327,7 +310,6 @@ void *leer_mensajes(void *arg)
 
 int main()
 {
-    
     const char *archivo = ".env";
     VariableEntorno *variables = NULL;
     int cantidad = cargar_variables_entorno(archivo, &variables);
@@ -349,7 +331,6 @@ int main()
         return -1;
     }
 
-    
     info.port = CONTEXT_PORT_NO_LISTEN;
     info.protocols = protocols;
 
@@ -368,11 +349,10 @@ int main()
     ccinfo.port = atoi(variables[1].valor);
     ccinfo.path = "/";
     ccinfo.protocol = "chat-protocol";
-    ccinfo.origin = local_ip; 
-
+    ccinfo.origin = local_ip;
 
     mostrar_comandos();
-    
+
     wsi = lws_client_connect_via_info(&ccinfo);
     if (!wsi)
     {
@@ -381,7 +361,6 @@ int main()
         return -1;
     }
 
-   
     while (!connection_open)
     {
         lws_service(context, 100);
@@ -414,14 +393,12 @@ int main()
         free(json);
     }
 
-   
     pthread_t hilo_lectura;
     pthread_create(&hilo_lectura, NULL, leer_mensajes, (void *)wsi);
 
     pthread_t hilo_escucha;
     pthread_create(&hilo_escucha, NULL, escuchar_servidor, (void *)context);
 
-    
     while (connection_open)
     {
         lws_service(context, 100);
