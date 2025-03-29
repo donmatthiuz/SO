@@ -80,7 +80,7 @@ lws_client_connect_via_info(&ccinfo);
 - El **contexto** (`lws_context`) es el entorno donde ocurren los eventos WebSocket
 - `wsi` es el socket individual del cliente que representa la conexión WebSocket
 
-## 🔄 Comunicación Cliente-Servidor
+## Comunicación Cliente-Servidor
 
 ### Cliente envía JSON
 
