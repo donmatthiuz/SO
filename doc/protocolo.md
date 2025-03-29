@@ -1,18 +1,5 @@
 # Protocolo con WebSockets
 
-## Universidad del Valle de Guatemala  
-**Facultad de Ingeniería**  
-**Sistemas Operativos Sección 21**  
-**Profesor: Luis Zarceño**  
-
-**"Protocolo WebSockets Proyecto 1"**  
-**Clase Sistemas operativos**  
-**16 de marzo del 2025, Guatemala de la Asunción**  
-
----
-
-# Protocolo de Comunicación WebSocket para Chat en Tiempo Real
-
 ## 1. Objetivo
 
 Establecer una comunicación bidireccional en tiempo real entre clientes y servidor, permitiendo:
