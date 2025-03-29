@@ -115,5 +115,5 @@ Este archivo contiene la implementación de las funciones relacionadas con la co
 
 ---
 
-Este documento describe la funcionalidad de cada componente en el sistema de red y comunicación.
+
 
