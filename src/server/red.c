@@ -174,6 +174,7 @@ void send_to_specific_client(const char *target_name, const char *message, const
     }
     else
     {
+        char *timestamp = get_current_timestamp();
         char *json = crearjsonError("server", timestamp, "Usuario no encontrado");
     }
     printf("[WARN] Cliente '%s' no encontrado\n", target_name);
