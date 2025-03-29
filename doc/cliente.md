@@ -130,3 +130,7 @@ gcc cliente.c parser.c ui.c -o cliente.o -lwebsockets -lpthread -lcjson
 # Ejecutar
 ./cliente.o
 ```
+
+![alt text](image-9.png)
+
+![alt text](image-10.png)
