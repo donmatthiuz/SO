@@ -148,7 +148,7 @@ void send_to_specific_client(const char *target_name, const char *message, const
     int encontrado = 0;
     for (int i = 0; i < MAX_USUARIOS; i++)
     {
-        if (usuarios[i].activo && strcmp(usuarios[i].nombre, target_name) == 0)
+        if (strcmp(usuarios[i].nombre, target_name) == 0)
         {
             int message_len = strlen(message);
             unsigned char *buf = malloc(LWS_PRE + message_len);
