@@ -276,8 +276,9 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
 
             // Notificar a todos los usuarios que un nuevo usuario se ha registrado
             char mensaje_nuevo_usuario[256];
-            snprintf(mensaje_nuevo_usuario, sizeof(mensaje_nuevo_usuario), "{\"type\":\"register\",\"sender\":\"%s\",\"content\":\"\"}", sender);
+            snprintf(mensaje_nuevo_usuario, sizeof(mensaje_nuevo_usuario), "{\"type\":\"register_success\",\"sender\":\"%s\",\"content\":\"\"}", sender);
 
+          
             pthread_mutex_lock(&mutex);
             for (int i = 0; i < MAX_USUARIOS; i++)
             {
@@ -296,6 +297,7 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
                     printf("[INFO] Mensaje de registro enviado a %s\n", usuarios[i].nombre);
                 }
             }
+            send_to_specific_client(sender, "{\"type\":\"register_success\",\"sender\":\"server\",\"content\":\"Usuario registrado con exito\"}");
             pthread_mutex_unlock(&mutex);
         }
 
@@ -304,19 +306,21 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason,
             const char *mensaje = getValueByKey(pares, n, "content");
             printf("[BROADCAST] %s: %s\n", sender, mensaje);
 
+            char *json_recibe = crearJson_broadcast("server", mensaje);
+            
             pthread_mutex_lock(&mutex);
             for (int i = 0; i < MAX_USUARIOS; i++)
             {
                 if (usuarios[i].activo && usuarios[i].wsi != wsi) // Evitar enviarlo al mismo cliente que lo envió
                 {
-                    int len_msg = strlen(message);
+                    int len_msg = strlen(json_recibe);
                     unsigned char *buf = malloc(LWS_PRE + len_msg);
                     if (!buf)
                     {
                         printf("[ERROR] Memoria insuficiente para broadcast\n");
                         continue;
                     }
-                    memcpy(buf + LWS_PRE, message, len_msg);
+                    memcpy(buf + LWS_PRE,json_recibe, len_msg);
                     lws_write(usuarios[i].wsi, buf + LWS_PRE, len_msg, LWS_WRITE_TEXT);
                     free(buf);
                     printf("[INFO] Mensaje broadcast enviado a %s\n", usuarios[i].nombre);

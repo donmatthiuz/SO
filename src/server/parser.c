@@ -119,6 +119,32 @@ char *crearJson_register(const char *nombre_usuario)
     return resultado;
 }
 
+char *crearJson_broadcast(const char *sender, const char *mensaje)
+{
+    char *timestamp = get_current_timestamp();
+    int tamaño = snprintf(NULL, 0,
+                          "{\"type\": \"broadcast\", \"sender\": \"%s\", \"content\": \"%s\", \"timestamp\": \"%s\"}",
+                          sender, mensaje, timestamp) +
+                 1;
+
+    // Asignar memoria para el mensaje
+    char *resultado = (char *)malloc(tamaño);
+    if (!resultado)
+    {
+        free(timestamp); // Liberar timestamp en caso de error
+        return NULL;
+    }
+
+    // Crear el mensaje con el timestamp
+    snprintf(resultado, tamaño,
+             "{\"type\": \"broadcast\", \"sender\": \"%s\", \"content\": \"%s\", \"timestamp\": \"%s\"}",
+             sender, mensaje, timestamp);
+
+    free(timestamp); // Liberar el timestamp después de usarlo
+
+    return resultado;
+}
+
 const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
 {
     for (int i = 0; i < cantidad; i++)

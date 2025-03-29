@@ -21,5 +21,5 @@ char *crearJson_list_users(const char *sender);
 char *crearJson_user_info(const char *sender, const char *target);
 char *crearJson_change_status(const char *sender, const char *nuevo_estado);
 char *crearJson_disconnect(const char *sender);
-
+char *crearJson_broadcast(const char *sender, const char *mensaje);
 #endif
