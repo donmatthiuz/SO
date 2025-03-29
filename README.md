@@ -6,7 +6,7 @@
 
 ## Cliente Funcionamiento
 
-[Click aqui]()
+[Click aqui](doc/cliente.md)
 
 ## Servidor
 
