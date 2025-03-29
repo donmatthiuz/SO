@@ -244,6 +244,3 @@ static int callback_chat(struct lws *wsi, enum lws_callback_reasons reason, void
     return 0;
 }
 ```
-
-Este código es una base para implementar el cliente WebSocket en C usando libwebsockets.
-

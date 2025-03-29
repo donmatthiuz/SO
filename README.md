@@ -9,7 +9,7 @@
 [Click aqui]()
 
 ## Servidor
-[Click aqui]()
+[Click aqui](doc/servidor.md)
 
 
 ## Instalaciones
