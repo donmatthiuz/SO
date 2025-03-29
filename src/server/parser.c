@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "red.h"
+#include <cjson/cJSON.h>
 
 typedef struct
 {
@@ -102,21 +104,56 @@ int parse_json(const char *json_str, JsonPair *pairs, int max_pairs)
     return count;
 }
 
-char *crearJson_register(const char *nombre_usuario)
+char *crearJson_Registro_Exitoso(const char *sender, const char *tiempo, UsuarioRegistrado *usuarios, int max_usuarios)
 {
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "type", "register_success");
+    cJSON_AddStringToObject(root, "sender", sender);
+    cJSON_AddStringToObject(root, "content", "Registro exitoso");
+    cJSON_AddStringToObject(root, "timestamp", tiempo);
 
-    int tamaño = snprintf(NULL, 0, "{\"type\": \"register\", \"sender\": \"%s\", \"content\": null}", nombre_usuario) + 1;
-
-    char *resultado = (char *)malloc(tamaño);
-    if (!resultado)
+    cJSON *userList = cJSON_CreateArray();
+    for (int i = 0; i < max_usuarios; i++)
     {
-        printf("Error al asignar memoria\n");
-        return NULL;
+        if (usuarios[i].activo)
+        {
+            cJSON_AddItemToArray(userList, cJSON_CreateString(usuarios[i].nombre));
+        }
     }
 
-    snprintf(resultado, tamaño, "{\"type\": \"register\", \"sender\": \"%s\", \"content\": null}", nombre_usuario);
+    cJSON_AddItemToObject(root, "userList", userList);
 
-    return resultado;
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json_str;
+}
+
+char *crearJson_Brodcast_register(const char *sender, const char *tiempo, const char *nombre_usuario)
+{
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "type", "broadcast");
+    cJSON_AddStringToObject(root, "sender", sender);
+    char mensaje[256];
+    snprintf(mensaje, sizeof(mensaje), "Se ha registrado el usuario: %s", nombre_usuario);
+    cJSON_AddStringToObject(root, "content", mensaje);
+    cJSON_AddStringToObject(root, "timestamp", tiempo);
+
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json_str;
+}
+
+char *crearjsonError(const char *sender, const char *tiempo, const char *contenido)
+{
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "type", "error");
+    cJSON_AddStringToObject(root, "sender", sender);
+    cJSON_AddStringToObject(root, "content", contenido);
+    cJSON_AddStringToObject(root, "timestamp", tiempo);
+
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json_str;
 }
 
 const char *getValueByKey(JsonPair *pares, int cantidad, const char *clave)
