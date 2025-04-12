@@ -28,62 +28,83 @@ void imprimir_sudoku() {
 
 bool verificar_fila(int fila) {
     bool numero_visto[10] = { false }; 
+    bool resultado = true;
 
+    #pragma omp parallel for shared(numero_visto, resultado)
     for (int j = 0; j < 9; j++) {
         int num = sudoku_matriz[fila][j];
+
         if (num >= 1 && num <= 9) {
-            if (numero_visto[num]) {
-                printf("Número repetido %d en la fila %d, columna %d\n", num, fila, j);
-                return false;
+            #pragma omp critical
+            {
+                if (numero_visto[num]) {
+                    printf("Número repetido %d en la fila %d, columna %d\n", num, fila, j);
+                    resultado = false;
+                }
+                numero_visto[num] = true;
             }
-            numero_visto[num] = true;
         } else {
-            printf("Número inválido %d en la fila %d, columna %d\n", num, fila, j);
-            return false;
+            #pragma omp critical
+            {
+                printf("Número inválido %d en la fila %d, columna %d\n", num, fila, j);
+                resultado = false;
+            }
         }
     }
 
-    
+  
     for (int k = 1; k <= 9; k++) {
         if (!numero_visto[k]) {
             printf("Falta el número %d en la fila %d\n", k, fila);
-            return false;
+            resultado = false;
         }
     }
 
-    return true;
+    return resultado;
 }
 
 
 
 bool verificar_columna(int columna) {
     bool numero_visto[10] = { false }; 
+    bool resultado = true;
 
+    #pragma omp parallel for shared(numero_visto, resultado)
     for (int i = 0; i < 9; i++) {
         int num = sudoku_matriz[i][columna];
+
         if (num >= 1 && num <= 9) {
-            if (numero_visto[num]) {
-                printf("Número repetido %d en la columna %d, fila %d\n", num, columna, i);
-                return false;
+            #pragma omp critical
+            {
+                if (numero_visto[num]) {
+                    printf("Número repetido %d en la columna %d, fila %d\n", num, columna, i);
+                    resultado = false;
+                }
+                numero_visto[num] = true;
             }
-            numero_visto[num] = true;
         } else {
-            printf("Número inválido %d en la columna %d, fila %d\n", num, columna, i);
-            return false;
+            #pragma omp critical
+            {
+                printf("Número inválido %d en la columna %d, fila %d\n", num, columna, i);
+                resultado = false;
+            }
         }
     }
 
+  
     for (int k = 1; k <= 9; k++) {
         if (!numero_visto[k]) {
             printf("Falta el número %d en la columna %d\n", k, columna);
-            return false;
+            resultado = false;
         }
     }
 
-    return true;
+    return resultado;
 }
 
+
 bool verificar_subarreglo_3x3(int fila_inicio, int columna_inicio) {
+    
     bool numero_visto[10] = { false }; 
 
     for (int i = fila_inicio; i < fila_inicio + 3; i++) {
@@ -114,9 +135,11 @@ bool verificar_subarreglo_3x3(int fila_inicio, int columna_inicio) {
 
 
 bool revisar_todas_filas(){
+    omp_set_nested(true);	 
     bool resultado = true;
-    
-    #pragma omp parallel for private(resultado)
+    int num_iteraciones = 9; 
+    omp_set_num_threads(num_iteraciones);
+    #pragma omp parallel for private(resultado) schedule(dynamic)
     for (int i = 0; i < SUDOKU_SIZE; i++) {
         if (!verificar_fila(i)) {
             #pragma omp critical
@@ -131,11 +154,13 @@ bool revisar_todas_filas(){
 }
 
 bool revisar_todas_columnas(void *arg){
+    omp_set_nested(true);	 
     pid_t id_del_hilo = syscall(SYS_gettid);
     printf("El thread que ejecuta el método para ejecutar la revisión de columnas es: %d\n", id_del_hilo);
     
     bool resultado = true;
-    
+    int num_iteraciones = 9; 
+    omp_set_num_threads(num_iteraciones);
     #pragma omp parallel for private(id_del_hilo)
     for (int i = 0; i < SUDOKU_SIZE; i++){
         id_del_hilo = syscall(SYS_gettid);
@@ -162,6 +187,8 @@ void ejecutar_ps_thread(long hilo_del_padre){
 }
 
 int main(int argc, char *argv[]) {
+    omp_set_nested(true);	 
+    //omp_set_num_threads(1);
     if (argc != 2) {
         printf("Uso: %s archivo_sudoku.txt\n", argv[0]);
         return 1;
@@ -226,8 +253,9 @@ int main(int argc, char *argv[]) {
 
     waitpid(hijo, NULL, 0);
     bool valido = true;
-    
-    #pragma omp parallel for shared(valido)
+    int num_iteraciones = 9;
+    omp_set_num_threads(num_iteraciones);
+    #pragma omp parallel for shared(valido) schedule(dynamic)
     for (int i = 0; i < SUDOKU_SIZE; i++) {
         if (!verificar_fila(i)) {
             #pragma omp critical
@@ -253,7 +281,8 @@ int main(int argc, char *argv[]) {
 
     bool subarreglos_validos = true;
     
-    #pragma omp parallel for collapse(2) shared(subarreglos_validos)
+    omp_set_num_threads(3);
+    #pragma omp parallel for collapse(2) shared(subarreglos_validos) schedule(dynamic)
     for (int i = 0; i < SUDOKU_SIZE; i += 3) {
         for (int j = 0; j < SUDOKU_SIZE; j += 3) {
             if (!verificar_subarreglo_3x3(i, j)) {
