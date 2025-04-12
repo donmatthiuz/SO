@@ -7,6 +7,7 @@
 #include <pthread.h>  // Para trabajar con hilos (threads)
 #include <sys/syscall.h>
 #include <sys/wait.h>
+#include <omp.h>      // Agregamos la librería OpenMP
 
 
 #define SUDOKU_SIZE 9
@@ -113,42 +114,51 @@ bool verificar_subarreglo_3x3(int fila_inicio, int columna_inicio) {
 
 
 bool revisar_todas_filas(){
-    for (int i = 0; i<SUDOKU_SIZE; i++){
-        if(!verificar_fila(i)){
-            printf("El sudoku es invalido\n");
-            return EXIT_FAILURE;
+    bool resultado = true;
+    
+    #pragma omp parallel for private(resultado)
+    for (int i = 0; i < SUDOKU_SIZE; i++) {
+        if (!verificar_fila(i)) {
+            #pragma omp critical
+            {
+                printf("El sudoku es invalido en la fila %d\n", i);
+                resultado = false;
+            }
         }
-
     }
-
+    
+    return resultado;
 }
 
 bool revisar_todas_columnas(void *arg){
     pid_t id_del_hilo = syscall(SYS_gettid);
     printf("El thread que ejecuta el método para ejecutar la revisión de columnas es: %d\n", id_del_hilo);
-    for (int i = 0; i<SUDOKU_SIZE; i++){
+    
+    bool resultado = true;
+    
+    #pragma omp parallel for private(id_del_hilo)
+    for (int i = 0; i < SUDOKU_SIZE; i++){
+        id_del_hilo = syscall(SYS_gettid);
         if(!verificar_columna(i)){
-            printf("El sudoku es invalido\n");
-            pthread_exit(NULL);
-            return EXIT_FAILURE;
-            
+            #pragma omp critical
+            {
+                printf("El sudoku es invalido en la columna %d\n", i);
+                resultado = false;
+            }
         }
         printf("En la revision de columnas el siguiente es un thread en ejecucion: %d\n", id_del_hilo);
-
     }
+    
     pthread_exit(NULL);
 }
 
 void ejecutar_ps_thread(long hilo_del_padre){
-
     char string_del_hilo[20];
     snprintf(string_del_hilo, sizeof(string_del_hilo), "%ld", hilo_del_padre);
 
     execlp("ps", "ps", "-p", string_del_hilo, "-lLf", (char *)NULL);
 
     perror("execlp falló");
-
-
 }
 
 int main(int argc, char *argv[]) {
@@ -157,14 +167,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // creamos la memmoria
+    
     int shm_fd = shm_open(SHARED_MEMORY_NAME, O_CREAT | O_RDWR, 0666);
     if (shm_fd == -1) {
         perror("Error al crear memoria compartida");
         return 1;
     }
 
-    // aqui le asignamos
+    
     if (ftruncate(shm_fd, sizeof(int) * SUDOKU_SIZE * SUDOKU_SIZE) == -1) {
         perror("Error al definir tamaño de memoria compartida");
         close(shm_fd);
@@ -181,7 +191,7 @@ int main(int argc, char *argv[]) {
 
     close(shm_fd);
 
-    // Abrir y leer el archivo de Sudoku
+   
     FILE *file = fopen(argv[1], "r");
     if (!file) {
         perror("Error al abrir el archivo");
@@ -196,8 +206,7 @@ int main(int argc, char *argv[]) {
     }
     fclose(file);
 
-
-    // relleno de la matriz
+    
     int index = 0;
     for (int i = 0; i < SUDOKU_SIZE; i++) {
         for (int j = 0; j < SUDOKU_SIZE; j++) {
@@ -205,37 +214,35 @@ int main(int argc, char *argv[]) {
         }
     }
 
-
-   
-
     pid_t padre = getpid();
     pid_t hijo = fork();
 
     if (hijo == 0) {
-        
         pthread_t thread;
         pthread_create(&thread, NULL, revisar_todas_columnas, NULL);
         pthread_join(thread, NULL);
-
-      
         ejecutar_ps_thread((long)padre);
     }
 
     waitpid(hijo, NULL, 0);
     bool valido = true;
+    
+    #pragma omp parallel for shared(valido)
     for (int i = 0; i < SUDOKU_SIZE; i++) {
         if (!verificar_fila(i)) {
-            printf("Sudoku inválido en fila %d\n", i);
-            valido = false;
-            break;
+            #pragma omp critical
+            {
+                printf("Sudoku inválido en fila %d\n", i);
+                valido = false;
+            }
         }
     }
+    
     if (valido)
         printf("Sudoku válido.\n");
     else
         printf("Sudoku inválido.\n");
         
-    
     pid_t hijo2 = fork();
     if (hijo2 == 0) {
         printf("Antes de terminar el estado de este proceso y sus threads es: \n");
@@ -244,20 +251,30 @@ int main(int argc, char *argv[]) {
 
     waitpid(hijo2, NULL, 0);
 
-    for (int i = 0; i<SUDOKU_SIZE; i+=3){
-        for (int j = 0; j<SUDOKU_SIZE; j+=3){
-            if(!verificar_subarreglo_3x3(i,j)){
-                printf("El sudoku es invalido\n");
-                return EXIT_FAILURE;
+    bool subarreglos_validos = true;
+    
+    #pragma omp parallel for collapse(2) shared(subarreglos_validos)
+    for (int i = 0; i < SUDOKU_SIZE; i += 3) {
+        for (int j = 0; j < SUDOKU_SIZE; j += 3) {
+            if (!verificar_subarreglo_3x3(i, j)) {
+                #pragma omp critical
+                {
+                    printf("El sudoku es invalido en el subarreglo que inicia en fila %d, columna %d\n", i, j);
+                    subarreglos_validos = false;
+                }
             }
         }
     }
 
+    if (!subarreglos_validos) {
+        printf("El sudoku es invalido\n");
+        return EXIT_FAILURE;
+    }
 
-    // ahora vamos a imprimirlo
+    
     imprimir_sudoku();
 
-    // eliminar memoria compartida
+   
     munmap(sudoku_matriz, sizeof(int) * SUDOKU_SIZE * SUDOKU_SIZE);
     shm_unlink(SHARED_MEMORY_NAME);
 
