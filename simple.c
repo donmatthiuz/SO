@@ -5,13 +5,13 @@
 
 
 static int __init simple_init(void){
-    printk(KERN_INFO, "Loading Module\nEstoy en el sistema operativo");
+    printk(KERN_INFO "Loading Module\nEstoy en el sistema operativo");
     return 0;
 }
 
 
 static void __exit simple_exit(void){
-    printk(KERN_INFO, "Removing Module\nEstoy afuera en el sistema operativo");
+    printk(KERN_INFO "Removing Module\nEstoy afuera en el sistema operativo");
 }
 
 module_init(simple_init);
