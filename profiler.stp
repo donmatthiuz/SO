@@ -1,4 +1,0 @@
-probe timer.profile {
- printf("Proceso %s\n",execname())
- printf("ID del proceso %d\n",pid())
-}
