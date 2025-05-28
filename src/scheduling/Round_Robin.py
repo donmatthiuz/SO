@@ -1,4 +1,4 @@
-from structure.procesors import *
+from src.structure.procesors import *
 
 class RoundRobinScheduler:
     def __init__(self, time_quantum):
@@ -101,7 +101,6 @@ def get_user_input():
     print("=== Round Robin Process Scheduler ===")
     
     time_quantum = int(input("\nEnter time quantum: "))
-    num_processes = int(input("Enter number of processes: "))
     
     scheduler = RoundRobinScheduler(time_quantum)
     
@@ -111,7 +110,7 @@ def main():
     """Función principal"""
     try:
         scheduler = get_user_input()
-        procesors = cargar_procesos_desde_archivo('../data/procesors.txt')
+        procesors = cargar_procesos_desde_archivo('./data/procesors.txt')
         scheduler.add_process(procesors)
         
         print("\nExecuting Round Robin Algorithm...")
