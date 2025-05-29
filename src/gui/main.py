@@ -142,11 +142,10 @@ def cargar_procesos_desde_archivo(archivo):
     except FileNotFoundError:
         # Si no existe el archivo, crear procesos de ejemplo
         procesos = [
-            Proceso("P1", 0, 8, 3),
-            Proceso("P2", 1, 4, 1),
-            Proceso("P3", 2, 9, 4),
-            Proceso("P4", 3, 5, 2),
-            Proceso("P5", 4, 2, 5)
+            Proceso("A", 0, 3, 1),
+            Proceso("B", 2, 6, 2),
+            Proceso("C", 4, 4, 3),
+             Proceso("D", 8, 2, 4),
         ]
     except Exception as e:
         print(f"Error cargando procesos: {e}")
