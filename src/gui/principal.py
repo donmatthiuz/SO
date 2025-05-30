@@ -16,6 +16,8 @@ from src.scheduling.SJF import SJF
 from src.scheduling.Round_Robin import RoundRobin
 from src.scheduling.FIFO import FIFO
 from src.scheduling.Round_Robin import RoundRobin
+from src.scheduling.SRT import SRTF
+from src.scheduling.Priority import Priority
 
 class SimuladorGUI(QMainWindow):
     def __init__(self, parent=None):
@@ -179,6 +181,12 @@ class SimuladorGUI(QMainWindow):
             
             elif "sjf" in algoritmo.lower():
                 scheduler = SJF(procesos=procesos)
+                resultado_simulacion = scheduler.simular()
+            elif "srt" in algoritmo.lower():
+                scheduler = SRTF(procesos=procesos)
+                resultado_simulacion = scheduler.simular()
+            elif "priority" in algoritmo.lower():
+                scheduler = Priority(procesos=procesos)
                 resultado_simulacion = scheduler.simular()
             else:
                 QMessageBox.information(self, "Info", 

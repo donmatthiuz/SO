@@ -6,7 +6,7 @@ from src.scheduling.AlgoritmoPlanificacion import AlgoritmoPlanificacion
 class SJF(AlgoritmoPlanificacion):
     def simular(self):
         procesos_copia = copy.deepcopy(self.procesos)
-        # Ordenar por tiempo de llegada primero
+       
         procesos_copia.sort(key=lambda p: p.tiempo_llegada)
         
         tiempo_actual = 0
@@ -14,9 +14,9 @@ class SJF(AlgoritmoPlanificacion):
         procesos_completados = []
         procesos_listos = []
         
-        # Mientras haya procesos por completar
+        
         while len(procesos_completados) < len(procesos_copia):
-            # Agregar procesos que han llegado a la cola de listos
+           
             for proceso in procesos_copia:
                 if (proceso.tiempo_llegada <= tiempo_actual and 
                     proceso not in procesos_completados and 
@@ -24,16 +24,16 @@ class SJF(AlgoritmoPlanificacion):
                     procesos_listos.append(proceso)
             
             if procesos_listos:
-                # Seleccionar el proceso con menor tiempo de CPU (SJF)
+                
                 proceso_actual = min(procesos_listos, key=lambda p: p.tiempo_cpu)
                 procesos_listos.remove(proceso_actual)
                 
-                # Establecer tiempo de inicio si es la primera vez que se ejecuta
+                
                 if proceso_actual.tiempo_inicio is None:
                     proceso_actual.tiempo_inicio = tiempo_actual
                     proceso_actual.tiempo_respuesta = tiempo_actual - proceso_actual.tiempo_llegada
                 
-                # Ejecutar el proceso completamente (SJF no preventivo)
+              
                 for i in range(proceso_actual.tiempo_cpu):
                     estado = "EJECUTANDO"
                     if i == proceso_actual.tiempo_cpu - 1:
