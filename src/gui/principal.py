@@ -12,6 +12,7 @@ from src.structure.process import cargar_procesos_desde_archivo
 from src.gui.table_schedule import GanttTableWindow
 from src.scheduling.resultados import generar_estadisticas
 from src.scheduling.FIFO import FIFO
+from src.scheduling.SJF import SJF
 from src.scheduling.Round_Robin import RoundRobin
 from src.scheduling.FIFO import FIFO
 from src.scheduling.Round_Robin import RoundRobin
@@ -166,7 +167,7 @@ class SimuladorGUI(QMainWindow):
             algoritmo = self.combo_algoritmo.currentText()
             quantum = self.spin_quantum.value()
             
-
+            print(algoritmo.lower())
             # Ejecutar algoritmo seleccionado
             if "fifo" in algoritmo.lower():
 
@@ -174,6 +175,10 @@ class SimuladorGUI(QMainWindow):
                 resultado_simulacion = scheduler.simular()
             elif "round robin" in algoritmo.lower():
                 scheduler = RoundRobin(quantum=4, procesos=procesos)
+                resultado_simulacion = scheduler.simular()
+            
+            elif "sjf" in algoritmo.lower():
+                scheduler = SJF(procesos=procesos)
                 resultado_simulacion = scheduler.simular()
             else:
                 QMessageBox.information(self, "Info", 
