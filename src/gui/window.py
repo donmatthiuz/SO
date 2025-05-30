@@ -203,8 +203,8 @@ class SimuladorGUI(QMainWindow):
             main_size = self.size()
             
             # Posicionar Gantt a la derecha de la ventana principal
-            gantt_x = main_pos.x() -100
-            gantt_y = main_pos.y() +100
+            gantt_x = main_pos.x() +40
+            gantt_y = main_pos.y() +270
             
             self.gantt_window.move(gantt_x, gantt_y)
     
@@ -250,7 +250,6 @@ class ResultadoSimulacion:
         return self.tabla_ejecucion.get(tiempo, None)
 
 def cargar_procesos_desde_archivo(archivo):
-    """Carga procesos desde un archivo de texto"""
     procesos = []
     try:
         with open(archivo, 'r') as f:
@@ -320,7 +319,6 @@ def fifo(procesos):
     return ResultadoSimulacion(procesos_copia, tabla_ejecucion, tiempo_actual)
 
 def round_robin(procesos, quantum):
-    """Algoritmo Round Robin"""
     procesos_copia = copy.deepcopy(procesos)
     procesos_copia.sort(key=lambda p: p.tiempo_llegada)
     
