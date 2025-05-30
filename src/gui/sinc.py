@@ -286,7 +286,7 @@ def simular_sincronizacion(procesos, recursos, acciones):
         for proceso in procesos_copia:
             if proceso.arrival_time == ciclo_actual:
                 procesos_activos.append(proceso)
-                proceso.estado = "READY"
+                proceso.estado = "ACCESED"
                 if proceso.tiempo_inicio is None:
                     proceso.tiempo_inicio = ciclo_actual
         
@@ -341,7 +341,7 @@ def simular_sincronizacion(procesos, recursos, acciones):
                     
                     # Si se liberó el recurso para otro proceso, actualizar su estado
                     if proceso_liberado:
-                        proceso_liberado.estado = "READY"
+                        proceso_liberado.estado = "ACCESED"
                         proceso_liberado.recurso_esperando = None
         
         # Actualizar estados de todos los procesos activos
@@ -351,7 +351,7 @@ def simular_sincronizacion(procesos, recursos, acciones):
                                len(proceso.acciones_en_curso) > 0)
             
             # Si el proceso no está bloqueado y no está realizando una acción específica
-            if proceso.estado == "READY" and proceso.tiempo_restante > 0 and not realizando_accion:
+            if proceso.estado == "ACCESED" and proceso.tiempo_restante > 0 and not realizando_accion:
                 # Verificar si hay acciones pendientes para este proceso en ciclos futuros
                 tiene_acciones_pendientes = any(
                     a.pid == proceso.pid and not a.ejecutada and a.ciclo > ciclo_actual 
@@ -376,7 +376,7 @@ def simular_sincronizacion(procesos, recursos, acciones):
                     for recurso in recursos_copia.values():
                         proceso_liberado = recurso.liberar_de_proceso(proceso)
                         if proceso_liberado:
-                            proceso_liberado.estado = "READY"
+                            proceso_liberado.estado = "ACCESED"
                             proceso_liberado.recurso_esperando = None
             
             # Si el proceso está realizando una acción, también reduce su tiempo restante
@@ -394,7 +394,7 @@ def simular_sincronizacion(procesos, recursos, acciones):
                     for recurso in recursos_copia.values():
                         proceso_liberado = recurso.liberar_de_proceso(proceso)
                         if proceso_liberado:
-                            proceso_liberado.estado = "READY"
+                            proceso_liberado.estado = "ACCESED"
                             proceso_liberado.recurso_esperando = None
             
             # Registrar estado del proceso en este ciclo
@@ -536,7 +536,7 @@ class SyncTableWindow(QWidget):
         self.resultado = resultado_sincronizacion
         self.ciclo_actual = 0
         self.colores_estado = {
-            "READY": QColor(100, 200, 100),      # Verde claro
+            "ACCESED": QColor(100, 200, 100),      # Verde claro
             "RUNNING": QColor(100, 150, 255),    # Azul
             "BLOCKED": QColor(255, 150, 100),    # Naranja
             "FINISHED": QColor(200, 200, 200),   # Gris
