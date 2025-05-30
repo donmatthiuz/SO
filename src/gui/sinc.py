@@ -124,6 +124,10 @@ class Recurso:
     def esta_disponible(self):
         return self.contador_actual > 0
     
+    def set_contador(self,contador):
+        self.contador_actual = contador
+        self.contador_inicial = contador
+    
     def asignar_a_proceso(self, proceso):
         if self.esta_disponible():
             self.contador_actual -= 1
@@ -213,7 +217,7 @@ def cargar_recursos_desde_archivo(archivo):
         # Recursos de ejemplo
         recursos = {
             "R1": Recurso("R1", 1),
-            "R2": Recurso("R2", 2),
+            "R2": Recurso("R2", 1),
         }
     except Exception as e:
         print(f"Error cargando recursos: {e}")
