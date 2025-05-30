@@ -39,6 +39,7 @@ class Recurso:
         return f"Recurso({self.nombre}, {self.contador_actual}/{self.contador_inicial})"
 
 def cargar_recursos_desde_archivo(archivo):
+    """Carga recursos desde un archivo de texto con formato: <NOMBRE>, <CONTADOR>"""
     recursos = {}
     try:
         with open(archivo, 'r') as f:
@@ -46,11 +47,15 @@ def cargar_recursos_desde_archivo(archivo):
                 linea = linea.strip()
                 if linea and not linea.startswith('#'):
                     partes = [p.strip() for p in linea.split(',')]
-                    if len(partes) >= 2:
+                    if len(partes) == 2:
                         nombre = partes[0]
-                        contador = int(partes[1])
-                        recursos[nombre] = Recurso(nombre, contador)
+                        try:
+                            contador = int(partes[1])
+                            recursos[nombre] = Recurso(nombre, contador)
+                        except ValueError:
+                            print(f"Contador inválido para el recurso '{nombre}': {partes[1]}")
     except FileNotFoundError:
+        print(f"Archivo no encontrado: {archivo}. Se usarán recursos por defecto.")
         recursos = {
             "R1": Recurso("R1", 1),
             "R2": Recurso("R2", 1),
