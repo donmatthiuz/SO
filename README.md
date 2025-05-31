@@ -1,6 +1,7 @@
 
 # Proyecto 2 SO
 
+## Link repositorio : https://github.com/donmatthiuz/SO/tree/proyecto2
 ---
 ## Proposito del proyecto
 
