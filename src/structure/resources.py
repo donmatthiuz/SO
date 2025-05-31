@@ -3,13 +3,13 @@ class Recurso:
         self.nombre = nombre
         self.contador_inicial = contador
         self.contador_actual = contador
-        self.procesos_usando = []  
-        self.cola_espera = []      
+        self.procesos_usando = []
+        self.cola_espera = []
     
     def esta_disponible(self):
         return self.contador_actual > 0
     
-    def set_contador(self,contador):
+    def set_contador(self, contador):
         self.contador_actual = contador
         self.contador_inicial = contador
     
@@ -28,12 +28,47 @@ class Recurso:
             self.procesos_usando.remove(proceso)
             self.contador_actual += 1
             
-            
             if self.cola_espera and self.esta_disponible():
                 siguiente_proceso = self.cola_espera.pop(0)
                 self.asignar_a_proceso(siguiente_proceso)
                 return siguiente_proceso
         return None
+    
+    def wait_semaforo(self, proceso):
+        """Operación WAIT (P) en el semáforo - equivalente a asignar_a_proceso"""
+        if self.contador_actual > 0:
+            self.contador_actual -= 1
+            if proceso not in self.procesos_usando:
+                self.procesos_usando.append(proceso)
+            return True
+        else:
+            # Contador en 0, el proceso debe esperar
+            if proceso not in self.cola_espera:
+                self.cola_espera.append(proceso)
+            return False
+    
+    def signal_semaforo(self, proceso):
+        """Operación SIGNAL (V) en el semáforo - equivalente a liberar_de_proceso"""
+        if proceso in self.procesos_usando:
+            self.procesos_usando.remove(proceso)
+            self.contador_actual += 1
+            
+            # Si hay procesos esperando, despertar al primero
+            if self.cola_espera and self.contador_actual > 0:
+                proceso_desbloqueado = self.cola_espera.pop(0)
+                self.contador_actual -= 1
+                if proceso_desbloqueado not in self.procesos_usando:
+                    self.procesos_usando.append(proceso_desbloqueado)
+                return proceso_desbloqueado
+        return None
+    
+    def get_estado_semaforo(self):
+        """Retorna el estado actual del semáforo"""
+        return {
+            'valor': self.contador_actual,
+            'procesos_usando': [p.pid for p in self.procesos_usando],
+            'cola_espera': [p.pid for p in self.cola_espera]
+        }
     
     def __str__(self):
         return f"Recurso({self.nombre}, {self.contador_actual}/{self.contador_inicial})"

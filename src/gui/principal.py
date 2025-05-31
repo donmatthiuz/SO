@@ -24,6 +24,7 @@ from src.structure.actions import Accion, cargar_acciones_desde_archivo
 from src.structure.resources import Recurso, cargar_recursos_desde_archivo
 from src.sincronization.Mutex import simular_sincronizacion
 from src.sincronization.resultado import generar_estadisticas_sync, generar_detalle_completo
+from src.sincronization.Semaforos import simular_sincronizacion_semaforos
 
 class SimuladorGUI(QMainWindow):
     def __init__(self, parent=None):
@@ -252,7 +253,7 @@ class SimuladorGUI(QMainWindow):
             QMessageBox.warning(self, "Error", "No se cargaron acciones.")
             return
 
-        resultado_simulacion = simular_sincronizacion(procesos, recursos, acciones)
+        resultado_simulacion = simular_sincronizacion_semaforos(procesos, recursos, acciones)
         
         self.gantt_window = SyncTableWindow(resultado_simulacion, self)
         self.gantt_window.show()
