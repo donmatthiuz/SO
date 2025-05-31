@@ -253,8 +253,11 @@ class SimuladorGUI(QMainWindow):
             QMessageBox.warning(self, "Error", "No se cargaron acciones.")
             return
 
-        resultado_simulacion = simular_sincronizacion_semaforos(procesos, recursos, acciones)
+        resultado_simulacion = simular_sincronizacion(procesos, recursos, acciones)
         
+        if self.gantt_window:
+                self.gantt_window.close()
+            
         self.gantt_window = SyncTableWindow(resultado_simulacion, self)
         self.gantt_window.show()
         self.position_gantt_window()
