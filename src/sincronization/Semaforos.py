@@ -45,7 +45,7 @@ def simular_sincronizacion_semaforos(procesos, recursos, acciones):
                 if proceso.estado != "BLOCKED" or proceso.recurso_esperando == accion.recurso:
                     
                     # Operación WAIT (P) en el semáforo
-                    if accion.accion in ["READ", "write"]:
+                    if accion.accion in ["read", "write"]:
                         if recurso.wait_semaforo(proceso):
                             # El proceso obtiene el recurso y comienza la acción
                             proceso.estado = "RUNNING"

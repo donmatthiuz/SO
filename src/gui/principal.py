@@ -185,7 +185,7 @@ class SimuladorGUI(QMainWindow):
                 scheduler = FIFO(procesos=procesos)
                 resultado_simulacion = scheduler.simular()
             elif "round robin" in algoritmo.lower():
-                scheduler = RoundRobin(quantum=4, procesos=procesos)
+                scheduler = RoundRobin(quantum=quantum, procesos=procesos)
                 resultado_simulacion = scheduler.simular()
             
             elif "sjf" in algoritmo.lower():
@@ -253,11 +253,18 @@ class SimuladorGUI(QMainWindow):
             QMessageBox.warning(self, "Error", "No se cargaron acciones.")
             return
 
-        resultado_simulacion = simular_sincronizacion(procesos, recursos, acciones)
-        
+        resultado_simulacion = simular_sincronizacion_semaforos(procesos, recursos, acciones)
+     
         if self.gantt_window:
                 self.gantt_window.close()
-            
+
+        algoritmo = self.combo_algoritmo.currentText()
+        
+        if "mutex" in algoritmo.lower():
+            resultado_simulacion = simular_sincronizacion(procesos, recursos, acciones)
+        elif "semaforos" in algoritmo.lower():
+            resultado_simulacion = simular_sincronizacion_semaforos(procesos, recursos, acciones)
+
         self.gantt_window = SyncTableWindow(resultado_simulacion, self)
         self.gantt_window.show()
         self.position_gantt_window()
