@@ -8,6 +8,9 @@ class Proceso:
         self.tiempo_inicio = None
         self.tiempo_fin = None
         self.tiempo_espera = 0
+        self.estado = "WAITING"
+        self.recurso_esperando = None
+        self.ciclos_ejecutados = 0
         self.tiempo_respuesta = None
     
     def __str__(self):

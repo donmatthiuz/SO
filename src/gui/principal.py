@@ -10,6 +10,8 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QPushButton,
 from PyQt5.QtCore import Qt
 from src.structure.process import cargar_procesos_desde_archivo
 from src.gui.table_schedule import GanttTableWindow
+from src.gui.table_sinc import SyncTableWindow
+
 from src.scheduling.resultados import generar_estadisticas
 from src.scheduling.FIFO import FIFO
 from src.scheduling.SJF import SJF
@@ -18,6 +20,10 @@ from src.scheduling.FIFO import FIFO
 from src.scheduling.Round_Robin import RoundRobin
 from src.scheduling.SRT import SRTF
 from src.scheduling.Priority import Priority
+from src.structure.actions import Accion, cargar_acciones_desde_archivo
+from src.structure.resources import Recurso, cargar_recursos_desde_archivo
+from src.sincronization.Mutex import simular_sincronizacion
+from src.sincronization.resultado import generar_estadisticas_sync, generar_detalle_completo
 
 class SimuladorGUI(QMainWindow):
     def __init__(self, parent=None):
@@ -229,13 +235,32 @@ class SimuladorGUI(QMainWindow):
             self.gantt_window.move(gantt_x, gantt_y)
     
     def on_simulacion_b_clicked(self):
-        """Maneja el clic en Simulación B (Sincronización)"""
-        QMessageBox.information(self, "Simulación B", 
-            "La Simulación B (Sincronización de Procesos) aún no está implementada.\n\n"
-            "Esta simulación incluirá:\n"
-            "• Mutex y Semáforos\n"
-            "• Sincronización de procesos\n"
-            "• Recursos compartidos")
+        procesos = cargar_procesos_desde_archivo("data/procesors.txt")
+        recursos = cargar_recursos_desde_archivo("data/recursos.txt")
+        acciones = cargar_acciones_desde_archivo("data/acciones.txt")
+        if not procesos:
+                QMessageBox.warning(self, "Error", "No se cargaron procesos.")
+                return
+            
+        if not recursos:
+            QMessageBox.warning(self, "Error", "No se cargaron recursos.")
+            return
+            
+        if not acciones:
+            QMessageBox.warning(self, "Error", "No se cargaron acciones.")
+            return
+
+        resultado_simulacion = simular_sincronizacion(procesos, recursos, acciones)
+        
+        self.gantt_window = SyncTableWindow(resultado_simulacion, self)
+        self.gantt_window.show()
+        estadisticas = generar_estadisticas_sync(resultado_simulacion)
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Estadísticas de Sincronización")
+        msg.setText(estadisticas)
+        msg.setDetailedText(generar_detalle_completo(resultado_simulacion))
+        msg.exec_() 
+    
     
     def closeEvent(self, event):
         """Maneja el cierre de la ventana principal"""

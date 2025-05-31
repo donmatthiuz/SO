@@ -33,7 +33,7 @@ class SimuladorSincronizacionGUI(QMainWindow):
         info_text = QTextEdit(self)
         info_text.setMaximumHeight(120)
         info_text.setPlainText("""Archivos necesarios en carpeta 'data/':
-- procesos.txt: PID, BT, AT, Priority (ej: P1, 8, 0, 1)
+- procesos.txt: PID, BT, AT, prioridad (ej: P1, 8, 0, 1)
 - recursos.txt: NOMBRE_RECURSO, CONTADOR (ej: R1, 1)
 - acciones.txt: PID, ACCION, RECURSO, CICLO (ej: P1, READ, R1, 0)""")
         info_text.setReadOnly(True)
@@ -88,7 +88,7 @@ class SimuladorSincronizacionGUI(QMainWindow):
             msg.setWindowTitle("Estadísticas de Sincronización")
             msg.setText(estadisticas)
             msg.setDetailedText(generar_detalle_completo(resultado_simulacion))
-            msg.exec_()
+            msg.exec_() 
             
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error en la simulación: {str(e)}")
@@ -98,12 +98,12 @@ class SimuladorSincronizacionGUI(QMainWindow):
 
 # proceso_sync.py
 class ProcesoSync:
-    def __init__(self, pid, burst_time, arrival_time, priority):
+    def __init__(self, pid, tiempo_cpu, tiempo_llegada, prioridad):
         self.pid = pid
-        self.burst_time = burst_time
-        self.arrival_time = arrival_time
-        self.priority = priority
-        self.tiempo_restante = burst_time
+        self.tiempo_cpu = tiempo_cpu
+        self.tiempo_llegada = tiempo_llegada
+        self.prioridad = prioridad
+        self.tiempo_restante = tiempo_cpu
         self.tiempo_inicio = None
         self.tiempo_fin = None
         self.estado = "WAITING"  # WAITING, RUNNING, BLOCKED, FINISHED
@@ -111,7 +111,7 @@ class ProcesoSync:
         self.ciclos_ejecutados = 0
     
     def __str__(self):
-        return f"Proceso({self.pid}, BT:{self.burst_time}, AT:{self.arrival_time}, P:{self.priority})"
+        return f"Proceso({self.pid}, BT:{self.tiempo_cpu}, AT:{self.tiempo_llegada}, P:{self.prioridad})"
 
 class Recurso:
     def __init__(self, nombre, contador):
@@ -184,10 +184,10 @@ def cargar_procesos_desde_archivo(archivo):
                     partes = [p.strip() for p in linea.split(',')]
                     if len(partes) >= 4:
                         pid = partes[0]
-                        burst_time = int(partes[1])
-                        arrival_time = int(partes[2])
-                        priority = int(partes[3])
-                        procesos.append(ProcesoSync(pid, burst_time, arrival_time, priority))
+                        tiempo_cpu = int(partes[1])
+                        tiempo_llegada = int(partes[2])
+                        prioridad = int(partes[3])
+                        procesos.append(ProcesoSync(pid, tiempo_cpu, tiempo_llegada, prioridad))
     except FileNotFoundError:
         # Procesos de ejemplo
         procesos = [
@@ -254,9 +254,7 @@ def cargar_acciones_desde_archivo(archivo):
     return acciones
 
 
-# ===================================
 
-# algoritmo_sync.py
 import copy
 
 def simular_sincronizacion(procesos, recursos, acciones):
@@ -275,8 +273,8 @@ def simular_sincronizacion(procesos, recursos, acciones):
     
     # Determinar ciclo máximo
     max_ciclo_acciones = max([a.ciclo for a in acciones_copia]) if acciones_copia else 0
-    max_burst_time = max([p.burst_time + p.arrival_time for p in procesos_copia])
-    ciclos_totales = max(max_ciclo_acciones + 15, max_burst_time + 10)
+    max_tiempo_cpu = max([p.tiempo_cpu + p.tiempo_llegada for p in procesos_copia])
+    ciclos_totales = max(max_ciclo_acciones + 15, max_tiempo_cpu + 10)
     
     while ciclo_actual < ciclos_totales:
         # Inicializar estado del ciclo
@@ -284,7 +282,7 @@ def simular_sincronizacion(procesos, recursos, acciones):
         
         # Agregar procesos que llegan en este ciclo
         for proceso in procesos_copia:
-            if proceso.arrival_time == ciclo_actual:
+            if proceso.tiempo_llegada == ciclo_actual:
                 procesos_activos.append(proceso)
                 proceso.estado = "ACCESED"
                 if proceso.tiempo_inicio is None:
@@ -332,7 +330,7 @@ def simular_sincronizacion(procesos, recursos, acciones):
                 if proceso and accion.recurso in recursos_copia:
                     recurso = recursos_copia[accion.recurso]
                     
-                    # Liberar el recurso
+                  
                     proceso_liberado = recurso.liberar_de_proceso(proceso)
                     
                     # Remover la acción de las acciones en curso del proceso
@@ -404,7 +402,7 @@ def simular_sincronizacion(procesos, recursos, acciones):
                 'tiempo_restante': proceso.tiempo_restante,
                 'recurso_esperando': proceso.recurso_esperando,
                 'recursos_usando': [],
-                'accion_actual': None
+                'accion_actual': None,
             }
             
             # Determinar qué recursos está usando
@@ -451,7 +449,7 @@ def simular_sincronizacion(procesos, recursos, acciones):
         
         # Verificar si todos los procesos han terminado y no hay acciones pendientes
         acciones_pendientes = any(not a.ejecutada for a in acciones_copia)
-        if not procesos_activos and not acciones_pendientes and ciclo_actual > max([p.arrival_time for p in procesos_copia]):
+        if not procesos_activos and not acciones_pendientes and ciclo_actual > max([p.tiempo_llegada for p in procesos_copia]):
             break
     
     return ResultadoSincronizacion(procesos_copia, recursos_copia, tabla_estados, ciclo_actual)
@@ -474,18 +472,18 @@ def generar_estadisticas_sync(resultado):
     # Estadísticas por proceso
     procesos_terminados = [p for p in procesos if p.tiempo_fin is not None]
     if procesos_terminados:
-        tiempo_total_promedio = sum(p.tiempo_fin - p.arrival_time for p in procesos_terminados) / len(procesos_terminados)
+        tiempo_total_promedio = sum(p.tiempo_fin - p.tiempo_llegada for p in procesos_terminados) / len(procesos_terminados)
         estadisticas += f"Tiempo total promedio: {tiempo_total_promedio:.2f} ciclos\n\n"
     
     estadisticas += "=== DETALLES POR PROCESO ===\n"
     for proceso in procesos:
         estadisticas += f"{proceso.pid}: "
-        estadisticas += f"Llegada={proceso.arrival_time}, "
-        estadisticas += f"BurstTime={proceso.burst_time}, "
-        estadisticas += f"Prioridad={proceso.priority}, "
+        estadisticas += f"Llegada={proceso.tiempo_llegada}, "
+        estadisticas += f"BurstTime={proceso.tiempo_cpu}, "
+        estadisticas += f"Prioridad={proceso.prioridad}, "
         if proceso.tiempo_fin:
             estadisticas += f"Terminó en ciclo {proceso.tiempo_fin}, "
-            estadisticas += f"Tiempo total={proceso.tiempo_fin - proceso.arrival_time}\n"
+            estadisticas += f"Tiempo total={proceso.tiempo_fin - proceso.tiempo_llegada}\n"
         else:
             estadisticas += "No terminó\n"
     
@@ -508,7 +506,7 @@ def generar_detalle_completo(resultado):
                 if info['recurso_esperando']:
                     detalle += f" (esperando {info['recurso_esperando']})"
                 elif info['recursos_usando']:
-                    detalle += f" (usando {', '.join(info['recursos_usando'])})"
+                    detalle += f" (usando {', '.join(info['recursos_usando'])}  {info["accion_actual"]})"
                 
                 detalle += f" [TR: {info['tiempo_restante']}]\n"
             
@@ -701,7 +699,7 @@ class SyncTableWindow(QWidget):
                     if info.get('recurso_esperando'):
                         detalle_texto += f" (esperando {info['recurso_esperando']})"
                     elif info.get('recursos_usando'):
-                        detalle_texto += f" (usando {', '.join(info['recursos_usando'])})"
+                        detalle_texto += f" (usandoA {', '.join(info['recursos_usando'])})"
                     detalle_texto += f" [TR: {tiempo_restante}]\n"
             
             # Actualizar área de detalle
@@ -737,7 +735,7 @@ class SyncTableWindow(QWidget):
 Crear carpeta 'data/' y archivos:
 
 procesos.txt:
-# PID, BT, AT, Priority
+# PID, BT, AT, prioridad
 P1, 8, 0, 1
 P2, 4, 1, 2
 P3, 6, 2, 3
