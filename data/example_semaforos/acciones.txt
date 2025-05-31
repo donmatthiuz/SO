@@ -1,19 +1,23 @@
-P1,read,R1,0
-P2,write,R1,0
-P3,read,R1,1
-P4,write,R1,1
-P5,read,R1,2
-P6,read,R1,3
-P7,read,R2,3
-P8,write,R2,3
-P1,read,R2,4
-P2,write,R2,4
-P3,read,R2,5
-P4,write,R2,6
-P5,read,R3,6
-P6,read,R3,6
-P7,write,R3,7
-P8,read,R3,7
-P1,read,R3,8
-P2,read,R3,8
-P3,write,R3,9
+A, read, R1, 0
+B, read, R1, 0
+C, read, R1, 1
+D, write, R2, 2
+E, read, R3, 3
+A, write, R2, 4
+B, read, R3, 4
+C, read, R3, 4
+A, write, R1, 5
+B, write, R1, 6
+C, write, R1, 7
+D, read, R3, 5
+E, write, R3, 6
+A, read, R3, 8
+B, write, R2, 8
+C, read, R3, 8
+D, write, R1, 9
+E, read, R1, 9
+A, write, R3, 10
+B, read, R3, 10
+C, write, R2, 11
+D, read, R2, 12
+E, write, R3, 12
