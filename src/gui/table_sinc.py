@@ -24,7 +24,7 @@ class SyncTableWindow(QWidget):
         layout = QVBoxLayout(self)
         
         # Etiqueta de título
-        self.label_titulo = QLabel("Simulación de Sincronización con Mutex", self)
+        self.label_titulo = QLabel("Simulación de Sincronización", self)
         self.label_titulo.setAlignment(Qt.AlignCenter)
         self.label_titulo.setStyleSheet("font-size: 16px; font-weight: bold; margin: 10px;")
         
@@ -38,13 +38,22 @@ class SyncTableWindow(QWidget):
         self.label_recursos.setAlignment(Qt.AlignCenter)
         self.label_recursos.setStyleSheet("font-size: 12px; margin: 5px;")
         
+        # Layout horizontal para tabla y detalle
+        contenido_layout = QHBoxLayout()
+        
         # Tabla principal
         self.tabla = QTableWidget(self)
         
         # Área de información detallada
         self.texto_detalle = QTextEdit(self)
-        self.texto_detalle.setMaximumHeight(150)
+        self.texto_detalle.setMinimumWidth(300)  # Ancho mínimo para el detalle
+        self.texto_detalle.setMaximumWidth(400)  # Ancho máximo para el detalle
+        self.texto_detalle.setMaximumHeight(100)  # Altura máxima reducida
         self.texto_detalle.setReadOnly(True)
+        
+        # Agregar tabla y detalle al layout horizontal
+        contenido_layout.addWidget(self.tabla, 2)  # La tabla toma más espacio (proporción 2)
+        contenido_layout.addWidget(self.texto_detalle, 1)  # El detalle toma menos espacio (proporción 1)
         
         # Controles
         controles_layout = QHBoxLayout()
@@ -58,12 +67,11 @@ class SyncTableWindow(QWidget):
         controles_layout.addWidget(self.btn_siguiente)
         controles_layout.addWidget(self.btn_reiniciar)
         
-        # Agregar widgets al layout
+        # Agregar widgets al layout principal
         layout.addWidget(self.label_titulo)
         layout.addWidget(self.label_ciclo)
         layout.addWidget(self.label_recursos)
-        layout.addWidget(self.tabla)
-        layout.addWidget(self.texto_detalle)
+        layout.addLayout(contenido_layout)  # Agregar el layout horizontal
         layout.addLayout(controles_layout)
         
         # Conectar botones
@@ -74,7 +82,7 @@ class SyncTableWindow(QWidget):
         
         self.setLayout(layout)
         self.setWindowTitle("Tabla de Sincronización")
-        self.resize(1000, 600)
+        self.resize(1200, 400)  # Reducido la altura de 600 a 500
     
     def setup_table(self):
         """Configura la tabla inicial"""
@@ -202,4 +210,3 @@ class SyncTableWindow(QWidget):
         self.ciclo_actual = 0
         self.setup_table()
         self.timer.start(1200)
-

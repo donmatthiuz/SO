@@ -50,7 +50,9 @@ class SimuladorGUI(QMainWindow):
             "Shortest Job First (SJF)",
             "Shortest Remaining Time (SRT)",
             "Round Robin",
-            "Priority Scheduling"
+            "Priority Scheduling", 
+            "mutex",
+            "semaforos"
         ])
         
         # Etiqueta y spin para quantum (inicialmente ocultos)
@@ -254,6 +256,7 @@ class SimuladorGUI(QMainWindow):
         
         self.gantt_window = SyncTableWindow(resultado_simulacion, self)
         self.gantt_window.show()
+        self.position_gantt_window()
         estadisticas = generar_estadisticas_sync(resultado_simulacion)
         msg = QMessageBox(self)
         msg.setWindowTitle("Estadísticas de Sincronización")
